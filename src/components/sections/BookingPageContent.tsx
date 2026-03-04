@@ -89,7 +89,7 @@ export function BookingPageContent() {
                 {[[t.booking.fname,"fname","text"],[t.booking.lname,"lname","text"],[t.booking.phone,"phone","tel"],[t.booking.email,"email","email"],[t.booking.checkin,"checkin","date"],[t.booking.checkout,"checkout","date"]].map(([label,key,type]:{mn:string;en:string}|any) => (
                   <div key={key}>
                     <label className={lbl}>{(label as {mn:string;en:string})[lang]}</label>
-                    <input type={type} value={(form as Record<string,string>)[key]} onChange={e=>set(key,e.target.value)} className={inp}/>
+                    <input type={type} value={(form as unknown as Record<string,string>)[key]} onChange={e=>set(key,e.target.value)} className={inp}/>
                   </div>
                 ))}
               </div>
