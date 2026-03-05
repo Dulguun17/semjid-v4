@@ -70,7 +70,7 @@ export const t = {
     title:    { mn: "Хэрхэн хүрэх вэ?",   en: "How to Get Here"       },
     sub:      { mn: "Улаанбаатар хоттой хатуу хучилттай засмал замаар холбогдсон. Жилийн 4 улиралд нээлттэй.", en: "Connected to Ulaanbaatar by paved road. Open year-round." },
     busTitle: { mn: "Тээврийн мэдээлэл",  en: "Transport Info"        },
-    bus:      { mn: "Зорчигч тээврийн автобус УБ хотоос өдөр бүр 14:00 цагаас Драгон товоос явна. Хужирт сумаас өдөр бүр 10:00 цагаас УБ хот руу явна.", en: "Daily bus from Dragon Terminal (UB) at 14:00. Return from Khujirt at 10:00 daily." },
+    bus:      { mn: "Зорчигч тээврийн автобус УБ хотоос өдөр бүр 14:00 цагаас Драгон төвөөс явна. Хужирт сумаас өдөр бүр 10:00 цагаас УБ хот руу явна.", en: "Daily bus from Dragon Terminal (UB) at 14:00. Return from Khujirt at 10:00 daily." },
     ticket:   { mn: "Билет захиалга:",    en: "Bus tickets:"           },
     addr:     { mn: "Өвөрхангай аймаг, Хужирт сум, Монгол улс", en: "Khujirt soum, Uvurkhangai aimag, Mongolia" },
   },

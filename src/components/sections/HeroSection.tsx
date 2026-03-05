@@ -24,7 +24,7 @@ export function HeroSection() {
       {/* Logo top-right */}
       <div className="absolute top-6 right-6 z-10">
         <div className="relative w-16 h-16 opacity-90">
-          <Image src="/images/logo.png" alt="Logo" fill className="object-contain drop-shadow-lg" />
+          <Image src="/images/hero-main.png" alt="Logo" fill className="object-contain drop-shadow-lg" />
         </div>
       </div>
 
