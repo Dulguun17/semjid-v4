@@ -3,6 +3,7 @@ import "./globals.css";
 import { LangProvider } from "@/lib/lang-context";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { ChatWidget } from "@/components/ui/ChatWidget";
 
 export const metadata: Metadata = {
   title: "Сэмжид Хүжирт Рашаан Сувилал",
@@ -17,6 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Navbar />
           <main>{children}</main>
           <Footer />
+          <ChatWidget />
         </LangProvider>
       </body>
     </html>

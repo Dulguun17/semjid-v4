@@ -19,8 +19,8 @@ module.exports = {
         deep:  "#0d1e2a",
       },
       fontFamily: {
-        serif: ["Playfair Display", "Georgia", "serif"],
-        sans:  ["Inter", "system-ui", "sans-serif"],
+  serif: ["Playfair Display", "Georgia", "serif"],
+  sans:  ["Noto Sans Mongolian", "Roboto", "system-ui", "sans-serif"],
       },
       keyframes: {
         fadeUp: {

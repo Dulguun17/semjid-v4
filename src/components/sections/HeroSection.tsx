@@ -12,7 +12,7 @@ export function HeroSection() {
       {/* Background */}
       <div className="absolute inset-0">
         <Image
-          src="/images/resort-main.jpg"
+          src="/images/hero-main.png"
           alt="Сэмжид Хүжирт"
           fill
           className="object-cover"

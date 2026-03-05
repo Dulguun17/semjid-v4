@@ -31,7 +31,7 @@ export function Navbar() {
       {/* Top bar */}
       <div className="hidden md:block bg-teal text-white text-[11px] py-1.5 px-6 lg:px-10">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <span className="opacity-70">{lang === "mn" ? "Жилийн 4 улиралд нээлттэй · Өвөрхангай аймаг, Хүжирт сум" : "Open Year-Round · Khujirt soum, Uvurkhangai aimag"}</span>
+          <span className="opacity-70">{lang === "mn" ? "Жилийн 4 улиралд нээлттэй · Өвөрхангай аймаг, Хужирт сум" : "Open Year-Round · Khujirt soum, Uvurkhangai aimag"}</span>
           <div className="flex items-center gap-4">
             <a href={`tel:${PHONE1.replace(/-/g,"")}`} className="flex items-center gap-1 opacity-80 hover:opacity-100 no-underline text-white">
               <Phone size={10} /> {PHONE1}
@@ -51,7 +51,7 @@ export function Navbar() {
               <Image src="/images/logo.png" alt="Logo" fill className="object-contain" />
             </div>
             <div>
-              <div className="font-serif text-[15px] font-semibold text-teal-dark leading-tight">Сэмжид Хүжирт</div>
+              <div className="font-serif text-[15px] font-semibold text-teal-dark leading-tight">Сэмжид Хужирт</div>
               <div className="text-[9px] text-slate-400 tracking-[0.2em] uppercase leading-tight">Рашаан Сувилал</div>
             </div>
           </Link>

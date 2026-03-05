@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Noto+Sans+Mongolian&family=Roboto:wght@300;400;500&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -10,7 +10,7 @@ html { scroll-behavior: smooth; }
 body {
   background: #fff;
   color: #1a1a2e;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Noto Sans Mongolian', 'Roboto', system-ui, sans-serif;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
@@ -34,6 +34,10 @@ h1, h2, h3, h4, h5 {
 .fade-up2 { animation: fadeUp 0.7s ease 0.15s both; }
 .fade-up3 { animation: fadeUp 0.7s ease 0.3s both; }
 
+/* Smooth image hover */
+.group:hover .group-hover\:scale-105 { transform: scale(1.05); }
+
+/* Line clamp */
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
