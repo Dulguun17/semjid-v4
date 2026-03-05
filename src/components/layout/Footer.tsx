@@ -16,7 +16,7 @@ export function Footer() {
               <Image src="/images/logo.png" alt="Logo" fill className="object-contain p-1"/>
             </div>
             <div>
-              <div className="font-serif text-white text-[16px]">Сэмжид Хүжирт</div>
+              <div className="font-serif text-white text-[16px]">Сэмжид Хужирт</div>
               <div className="text-[9px] text-slate-500 tracking-widest">РАШААН СУВИЛАЛ</div>
             </div>
           </div>

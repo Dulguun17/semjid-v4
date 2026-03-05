@@ -117,7 +117,7 @@ export function LocationSection() {
                 allowFullScreen
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
-                title={lang === "mn" ? "Сэмжид Хүжирт байршил" : "Semjid Khujirt Location"}
+                title={lang === "mn" ? "Сэмжид Хужирт байршил" : "Semjid Khujirt Location"}
               />
             </div>
 

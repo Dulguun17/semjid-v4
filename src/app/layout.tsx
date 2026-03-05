@@ -6,7 +6,7 @@ import { Footer } from "@/components/layout/Footer";
 import { ChatWidget } from "@/components/ui/ChatWidget";
 
 export const metadata: Metadata = {
-  title: "Сэмжид Хүжирт Рашаан Сувилал",
+  title: "Сэмжид Хужирт Рашаан Сувилал",
   description: "Монголын анхны хувийн рашаан сувилал. Mongolia's first private mineral resort.",
 };
 

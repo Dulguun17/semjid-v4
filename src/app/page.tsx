@@ -5,7 +5,6 @@ import { ServicesSection }   from "@/components/sections/ServicesSection";
 import { ConditionsSection } from "@/components/sections/ConditionsSection";
 import { RoomsSection }      from "@/components/sections/RoomsSection";
 import { LocationSection }   from "@/components/sections/LocationSection";
-import { GallerySection }    from "@/components/sections/GallerySection";
 import { BookingCTA }        from "@/components/sections/BookingCTA";
 
 export default function Home() {
@@ -18,7 +17,6 @@ export default function Home() {
       <ConditionsSection />
       <RoomsSection />
       <LocationSection />
-      <GallerySection />
       <BookingCTA />
     </>
   );

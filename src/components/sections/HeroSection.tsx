@@ -13,7 +13,7 @@ export function HeroSection() {
       <div className="absolute inset-0">
         <Image
           src="/images/hero-main.png"
-          alt="Сэмжид Хүжирт"
+          alt="Сэмжид Хужирт"
           fill
           className="object-cover"
           priority

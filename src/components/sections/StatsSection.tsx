@@ -5,7 +5,7 @@ export function StatsSection() {
   const stats = [
     { n:"2003", l:{ mn:"Үүссэн он", en:"Founded" } },
     { n:"50+",  l:{ mn:"Мэргэжлийн ажилтан", en:"Specialist Staff" } },
-    { n:"180",  l:{ mn:"Зуны багтаамж", en:"Summer Capacity" } },
+    { n:"250",  l:{ mn:"Зуны багтаамж", en:"Summer Capacity" } },
     { n:"380км",l:{ mn:"УБ-аас зай", en:"From Ulaanbaatar" } },
   ];
   return (

@@ -32,7 +32,7 @@ export function GallerySection() {
               {lang === "mn" ? "Зургийн цомог" : "Gallery"}
             </span>
             <h2 className="font-serif text-[clamp(22px,2.5vw,36px)] text-slate-800">
-              {lang === "mn" ? "Сэмжид Хүжирт" : "Semjid Khujirt"}
+              {lang === "mn" ? "Сэмжид Хужирт" : "Semjid Khujirt"}
             </h2>
           </div>
           <span className="text-[12px] text-slate-400">

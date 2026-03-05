@@ -11,7 +11,7 @@ export function BookingCTA() {
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
         <div>
           <h2 className="font-serif text-[clamp(26px,3.5vw,46px)] text-white leading-tight">
-            {lang==="mn"?"Одоо захиалга өгч\nэрүүлжилтээ эхлүүлэ":"Book Now &\nBegin Your Healing"}
+            {lang==="mn"?"Эрүүлээр урт насалъя":"Book Now &\nBegin Your Healing"}
           </h2>
           <p className="text-[14px] text-white/50 mt-2">{lang==="mn"?"QPay, карт болон банкны шилжүүлгээр төлнө үү.":"Pay via QPay, card, or bank transfer."}</p>
         </div>
