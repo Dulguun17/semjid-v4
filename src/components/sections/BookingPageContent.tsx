@@ -1,12 +1,13 @@
 "use client";
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
 import {
   CheckCircle, QrCode, Building2, Banknote, Check, Loader2,
-  UploadCloud, FileText, X, AlertCircle, Info,
+  UploadCloud, FileText, X, AlertCircle, Info, Lock,
 } from "lucide-react";
 import { useLang } from "@/lib/lang-context";
 import { t, rooms, services, formatMNT, PHONE1, PHONE2 } from "@/lib/data";
+import { supabase } from "@/lib/supabase";
 
 type Step = 1 | 2 | 3;
 type PayMethod = "qpay" | "card" | "bank" | "cash";
@@ -19,6 +20,7 @@ export function BookingPageContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [pay, setPay] = useState<PayMethod>("qpay");
+  const [blockedRooms, setBlockedRooms] = useState<string[]>([]);
 
   // Ilgeeh bichig state
   const [ilgeehFile, setIlgeehFile] = useState<File | null>(null);
@@ -38,6 +40,30 @@ export function BookingPageContent() {
   });
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
+
+  // Check room availability when dates change
+  useEffect(() => {
+    if (!form.checkin || !form.checkout) { setBlockedRooms([]); return; }
+    const checkAvailability = async () => {
+      // Get bookings that overlap with selected dates
+      const { data: bk } = await supabase
+        .from("bookings")
+        .select("room_id")
+        .not("status", "eq", "cancelled")
+        .lt("check_in", form.checkout)
+        .gt("check_out", form.checkin);
+      // Get manual blocks that overlap
+      const { data: bl } = await supabase
+        .from("room_blocks")
+        .select("room_id")
+        .lte("from_date", form.checkout)
+        .gte("to_date", form.checkin);
+      const bookedIds = (bk || []).map((b: {room_id: string}) => b.room_id);
+      const blockedIds = (bl || []).map((b: {room_id: string}) => b.room_id);
+      setBlockedRooms([...new Set([...bookedIds, ...blockedIds])]);
+    };
+    checkAvailability();
+  }, [form.checkin, form.checkout]);
   const toggleSvc = (id: string) => setForm(f => ({
     ...f, svcIds: f.svcIds.includes(id) ? f.svcIds.filter(s => s !== id) : [...f.svcIds, id],
   }));
@@ -279,19 +305,30 @@ export function BookingPageContent() {
                 <h2 className="font-serif text-xl text-slate-800 mb-5">{t.rooms.title[lang]}</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {rooms.map(r => {
-                    const price = r.adult2??r.adult1??0; const sel = form.roomId===r.id;
+                    const price = r.adult2??r.adult1??0;
+                    const sel = form.roomId===r.id;
+                    const unavailable = blockedRooms.includes(r.id);
                     return (
-                      <div key={r.id} onClick={()=>set("roomId",r.id)} className={`border-2 rounded-xl overflow-hidden cursor-pointer transition-all ${sel?"border-teal shadow-lg shadow-teal/10":"border-slate-100 hover:border-slate-200"}`}>
+                      <div key={r.id}
+                        onClick={()=>{ if(!unavailable) set("roomId", r.id); }}
+                        className={`border-2 rounded-xl overflow-hidden transition-all ${unavailable?"opacity-60 cursor-not-allowed border-slate-100":sel?"border-teal shadow-lg shadow-teal/10 cursor-pointer":"border-slate-100 hover:border-slate-200 cursor-pointer"}`}>
                         <div className="relative h-32 overflow-hidden">
                           <Image src={r.img} alt={r.name[lang]} fill className="object-cover"/>
-                          {sel&&<div className="absolute top-2 right-2 w-6 h-6 bg-teal rounded-full flex items-center justify-center"><Check size={12} className="text-white"/></div>}
+                          {sel&&!unavailable&&<div className="absolute top-2 right-2 w-6 h-6 bg-teal rounded-full flex items-center justify-center"><Check size={12} className="text-white"/></div>}
+                          {unavailable&&(
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                              <div className="bg-red-500 text-white text-[11px] font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5">
+                                <Lock size={11}/>{lang==="mn"?"Захиалга дүүрсэн":"Unavailable"}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         <div className="p-3">
                           <div className="flex items-start justify-between gap-1">
                             <div className="text-[13px] font-medium text-slate-700">{r.name[lang]}</div>
                             {r.totalRooms>0&&<span className="text-[10px] bg-slate-100 text-slate-500 rounded px-1.5 py-0.5 shrink-0 whitespace-nowrap">{r.totalRooms} {lang==="mn"?"өрөө":"rooms"}</span>}
                           </div>
-                          <div className="text-[12px] text-teal font-semibold mt-0.5">{formatMNT(price)}{t.rooms.night[lang]}</div>
+                          <div className={`text-[12px] font-semibold mt-0.5 ${unavailable?"text-slate-400":"text-teal"}`}>{formatMNT(price)}{t.rooms.night[lang]}</div>
                           <div className="text-[10px] text-slate-400 mt-1">
                             {lang==="mn"
                               ?`0–2 нас: ${formatMNT(r.child02??0)} · 3–7 нас: ${formatMNT(r.child37a??r.child37b??0)} · 8–12 нас: ${formatMNT(r.child812a??r.child812b??0)}`
