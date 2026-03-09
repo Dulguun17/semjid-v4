@@ -10,6 +10,7 @@ export async function POST(req: NextRequest) {
       fname, lname, phone, email,
       checkin, checkout, roomId, svcIds,
       guests, notes, payment, total,
+      ilgeehBichigUrl,
     } = body;
 
     // Validate required fields
@@ -35,6 +36,7 @@ export async function POST(req: NextRequest) {
         payment: payment || "cash",
         total: total || 0,
         status: "pending",
+        ilgeeh_bichig_url: ilgeehBichigUrl || null,
       })
       .select()
       .single();
