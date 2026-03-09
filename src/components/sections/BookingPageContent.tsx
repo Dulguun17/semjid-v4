@@ -8,7 +8,7 @@ import {
 import { useLang } from "@/lib/lang-context";
 import { t, rooms, services, formatMNT, PHONE1, PHONE2 } from "@/lib/data";
 
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3;
 type PayMethod = "qpay" | "card" | "bank" | "cash";
 
 export function BookingPageContent() {
@@ -135,10 +135,9 @@ export function BookingPageContent() {
     </div>
   );
 
-  const sanamjItems = t.booking.sanamj as { mn: string; en: string }[];
   const steps = [
     { n: 1, l: t.booking.s1 }, { n: 2, l: t.booking.s2 },
-    { n: 3, l: t.booking.s3 }, { n: 4, l: t.booking.s4 },
+    { n: 3, l: t.booking.s3 },
   ] as const;
 
   return (
@@ -162,7 +161,7 @@ export function BookingPageContent() {
                 {step > s.n ? <Check size={14} /> : s.n}
               </div>
               <span className={`text-[12px] hidden sm:block ${step >= s.n ? "text-slate-700" : "text-slate-300"}`}>{s.l[lang]}</span>
-              {i < 3 && <div className={`w-8 h-px mx-1 ${step > s.n ? "bg-teal/40" : "bg-slate-200"}`} />}
+              {i < 2 && <div className={`w-8 h-px mx-1 ${step > s.n ? "bg-teal/40" : "bg-slate-200"}`} />}
             </div>
           ))}
         </div>
@@ -173,23 +172,102 @@ export function BookingPageContent() {
 
           {/* STEP 1 */}
           {step === 1 && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <h2 className="font-serif text-xl text-slate-800 mb-6">{t.booking.s1[lang]}</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                {[[t.booking.fname,"fname","text"],[t.booking.lname,"lname","text"],[t.booking.phone,"phone","tel"],[t.booking.email,"email","email"],[t.booking.checkin,"checkin","date"],[t.booking.checkout,"checkout","date"]].map(([label,key,type]) => (
-                  <div key={key as string}>
-                    <label className={lbl}>{(label as {mn:string;en:string})[lang]}</label>
-                    <input type={type as string} value={(form as unknown as Record<string,string>)[key as string]} onChange={e=>set(key as string,e.target.value)} className={inp}/>
+            <div className="space-y-5">
+              {/* Personal info */}
+              <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <h2 className="font-serif text-xl text-slate-800 mb-6">{t.booking.s1[lang]}</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  {[[t.booking.fname,"fname","text"],[t.booking.lname,"lname","text"],[t.booking.phone,"phone","tel"],[t.booking.email,"email","email"],[t.booking.checkin,"checkin","date"],[t.booking.checkout,"checkout","date"]].map(([label,key,type]) => (
+                    <div key={key as string}>
+                      <label className={lbl}>{(label as {mn:string;en:string})[lang]}</label>
+                      <input type={type as string} value={(form as unknown as Record<string,string>)[key as string]} onChange={e=>set(key as string,e.target.value)} className={inp}/>
+                    </div>
+                  ))}
+                </div>
+                <div className="mb-2">
+                  <label className={lbl}>{t.booking.numGuests[lang]}</label>
+                  <select value={form.guests} onChange={e=>set("guests",e.target.value)} className={inp}>
+                    {["1","2","3","4","5"].map(n=><option key={n}>{n}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Ilgeeh bichig upload */}
+              <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <div className="flex items-start gap-3 mb-4">
+                  <FileText size={22} className="text-teal mt-0.5 shrink-0" />
+                  <div>
+                    <h2 className="font-serif text-xl text-slate-800">{t.booking.ilgeeh.title[lang]}</h2>
+                    <p className="text-[13px] text-slate-400 mt-1">{t.booking.ilgeeh.sub[lang]}</p>
                   </div>
-                ))}
+                </div>
+                {!ilgeehFile ? (
+                  <div
+                    onDragOver={e=>{e.preventDefault();setIsDragging(true);}}
+                    onDragLeave={()=>setIsDragging(false)}
+                    onDrop={handleDrop}
+                    onClick={()=>fileInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${isDragging?"border-teal bg-teal/5":"border-slate-200 hover:border-teal/50 hover:bg-slate-50"}`}
+                  >
+                    <UploadCloud size={36} className={`mx-auto mb-3 ${isDragging?"text-teal":"text-slate-300"}`}/>
+                    <p className="text-[14px] text-slate-500 font-medium">{t.booking.ilgeeh.dragDrop[lang]}</p>
+                    <p className="text-[11px] text-slate-300 mt-1">PDF, JPG, PNG — max 10MB</p>
+                    <input ref={fileInputRef} type="file" accept="application/pdf,image/*" className="hidden" onChange={e=>{const f=e.target.files?.[0];if(f)handleFileSelect(f);}}/>
+                  </div>
+                ) : (
+                  <div className={`border rounded-xl p-4 flex items-center gap-3 ${ilgeehUrl?"border-teal/30 bg-teal/5":"border-slate-200 bg-slate-50"}`}>
+                    <FileText size={24} className={ilgeehUrl?"text-teal":"text-slate-400"}/>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-medium text-slate-700 truncate">{ilgeehFile.name}</p>
+                      <p className={`text-[12px] mt-0.5 ${ilgeehUrl?"text-teal":"text-slate-400"}`}>
+                        {uploading ? t.booking.ilgeeh.uploading[lang] : ilgeehUrl ? t.booking.ilgeeh.uploaded[lang] : uploadError}
+                      </p>
+                    </div>
+                    {uploading
+                      ? <Loader2 size={18} className="text-teal animate-spin shrink-0"/>
+                      : <button onClick={()=>{setIlgeehFile(null);setIlgeehUrl("");setUploadError("");}} className="text-slate-400 hover:text-red-400 transition-colors cursor-pointer shrink-0"><X size={18}/></button>
+                    }
+                  </div>
+                )}
+                {uploadError&&<div className="mt-2 flex items-center gap-2 text-red-500 text-[12px]"><AlertCircle size={14}/>{uploadError}</div>}
+                <p className="text-[11px] text-slate-400 mt-3 flex items-center gap-1.5">
+                  <Info size={12} className="shrink-0"/>{t.booking.ilgeeh.optional[lang]}
+                </p>
               </div>
-              <div className="mb-6">
-                <label className={lbl}>{t.booking.numGuests[lang]}</label>
-                <select value={form.guests} onChange={e=>set("guests",e.target.value)} className={inp}>
-                  {["1","2","3","4","5"].map(n=><option key={n}>{n}</option>)}
-                </select>
+
+              {/* Sanamj checklist */}
+              <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-2 h-2 rounded-full bg-amber-400"/>
+                  <h2 className="font-serif text-xl text-slate-800">{lang==="mn"?"САНАМЖ":"NOTICE"}</h2>
+                </div>
+                <p className="text-[12px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-4 py-3 mb-5 leading-relaxed">
+                  {t.booking.ilgeeh.sanamjTitle[lang]}
+                </p>
+                <div className="space-y-3">
+                  {(t.booking.sanamj as {mn:string;en:string}[]).map((item, i) => (
+                    <div key={i} onClick={()=>toggleCheck(i)} className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all select-none ${checkedItems[i]?"border-teal/30 bg-teal/5":"border-slate-100 hover:border-slate-200 hover:bg-slate-50"}`}>
+                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${checkedItems[i]?"border-teal bg-teal":"border-slate-300"}`}>
+                        {checkedItems[i]&&<Check size={11} className="text-white"/>}
+                      </div>
+                      <p className={`text-[13px] leading-relaxed transition-colors ${checkedItems[i]?"text-slate-400 line-through":"text-slate-700"}`}>
+                        <span className="font-semibold text-teal mr-1">{i+1}.</span>{item[lang]}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-5 pt-4 border-t border-slate-100">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[11px] text-slate-400">{lang==="mn"?`${checkedItems.filter(Boolean).length}/${(t.booking.sanamj as []).length} зүйл уншсан`:`${checkedItems.filter(Boolean).length}/${(t.booking.sanamj as []).length} items acknowledged`}</span>
+                    {checkedItems.every(Boolean)&&<span className="text-[11px] text-teal font-semibold flex items-center gap-1"><Check size={12}/>{lang==="mn"?"Бүгдийг уншсан":"All acknowledged"}</span>}
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-teal rounded-full transition-all duration-500" style={{width:`${(checkedItems.filter(Boolean).length/(t.booking.sanamj as []).length)*100}%`}}/>
+                  </div>
+                </div>
               </div>
-              {error && <p className="text-red-500 text-[12px] mb-3">{error}</p>}
+
+              {error && <p className="text-red-500 text-[12px]">{error}</p>}
               <button onClick={()=>{if(!form.fname||!form.lname||!form.phone||!form.checkin||!form.checkout){setError(lang==="mn"?"Заавал талбаруудыг бөглөнө үү.":"Please fill required fields.");return;}setError("");setStep(2);}} className="text-[13px] font-medium bg-teal hover:bg-teal-dark text-white px-8 py-3 rounded-lg transition-colors cursor-pointer">{t.booking.next[lang]}</button>
             </div>
           )}
@@ -271,118 +349,11 @@ export function BookingPageContent() {
               {error&&<div className="bg-red-50 border border-red-100 text-red-600 text-[13px] rounded-lg px-4 py-3">{error}</div>}
               <div className="flex gap-3">
                 <button onClick={()=>setStep(2)} className="text-[13px] text-slate-500 border border-slate-200 px-6 py-3 rounded-lg cursor-pointer">{t.booking.back[lang]}</button>
-                <button onClick={()=>{setError("");setStep(4);}} className="flex-1 text-[13px] font-medium bg-teal text-white py-3 rounded-lg cursor-pointer">{t.booking.next[lang]}</button>
+                <button onClick={handleSubmit} disabled={loading||uploading} className="flex-1 flex items-center justify-center gap-2 text-[13px] font-medium bg-teal hover:bg-teal-dark text-white py-3 rounded-lg cursor-pointer transition-colors disabled:opacity-60">{loading?<><Loader2 size={14} className="animate-spin"/>{lang==="mn"?"Илгээж байна...":"Submitting..."}</>:t.booking.submit[lang]}</button>
               </div>
             </div>
           )}
 
-          {/* STEP 4 — Ilgeeh Bichig + Sanamj */}
-          {step === 4 && (
-            <div className="space-y-5">
-
-              {/* Upload card */}
-              <div className="bg-white rounded-2xl p-6 shadow-sm">
-                <div className="flex items-start gap-3 mb-2">
-                  <FileText size={22} className="text-teal mt-0.5 shrink-0" />
-                  <div>
-                    <h2 className="font-serif text-xl text-slate-800">{t.booking.ilgeeh.title[lang]}</h2>
-                    <p className="text-[13px] text-slate-400 mt-1">{t.booking.ilgeeh.sub[lang]}</p>
-                  </div>
-                </div>
-                <div className="mt-5">
-                  {!ilgeehFile ? (
-                    <div
-                      onDragOver={e=>{e.preventDefault();setIsDragging(true);}}
-                      onDragLeave={()=>setIsDragging(false)}
-                      onDrop={handleDrop}
-                      onClick={()=>fileInputRef.current?.click()}
-                      className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${isDragging?"border-teal bg-teal/5":"border-slate-200 hover:border-teal/50 hover:bg-slate-50"}`}
-                    >
-                      <UploadCloud size={36} className={`mx-auto mb-3 ${isDragging?"text-teal":"text-slate-300"}`}/>
-                      <p className="text-[14px] text-slate-500 font-medium">{t.booking.ilgeeh.dragDrop[lang]}</p>
-                      <p className="text-[11px] text-slate-300 mt-1">PDF, JPG, PNG — max 10MB</p>
-                      <input ref={fileInputRef} type="file" accept="application/pdf,image/*" className="hidden" onChange={e=>{const f=e.target.files?.[0];if(f)handleFileSelect(f);}}/>
-                    </div>
-                  ) : (
-                    <div className={`border rounded-xl p-4 flex items-center gap-3 ${ilgeehUrl?"border-teal/30 bg-teal/5":"border-slate-200 bg-slate-50"}`}>
-                      <FileText size={24} className={ilgeehUrl?"text-teal":"text-slate-400"}/>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-medium text-slate-700 truncate">{ilgeehFile.name}</p>
-                        <p className={`text-[12px] mt-0.5 ${ilgeehUrl?"text-teal":"text-slate-400"}`}>
-                          {uploading ? t.booking.ilgeeh.uploading[lang] : ilgeehUrl ? t.booking.ilgeeh.uploaded[lang] : uploadError}
-                        </p>
-                      </div>
-                      {uploading
-                        ? <Loader2 size={18} className="text-teal animate-spin shrink-0"/>
-                        : <button onClick={()=>{setIlgeehFile(null);setIlgeehUrl("");setUploadError("");}} className="text-slate-400 hover:text-red-400 transition-colors cursor-pointer shrink-0"><X size={18}/></button>
-                      }
-                    </div>
-                  )}
-                  {uploadError&&<div className="mt-2 flex items-center gap-2 text-red-500 text-[12px]"><AlertCircle size={14}/>{uploadError}</div>}
-                  <p className="text-[11px] text-slate-400 mt-3 flex items-center gap-1.5">
-                    <Info size={12} className="shrink-0"/>{t.booking.ilgeeh.optional[lang]}
-                  </p>
-                </div>
-              </div>
-
-              {/* Sanamj checklist */}
-              <div className="bg-white rounded-2xl p-6 shadow-sm">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-2 h-2 rounded-full bg-amber-400"/>
-                  <h2 className="font-serif text-xl text-slate-800">{lang==="mn"?"САНАМЖ":"NOTICE"}</h2>
-                </div>
-                <p className="text-[12px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-4 py-3 mb-5 leading-relaxed">
-                  {t.booking.ilgeeh.sanamjTitle[lang]}
-                </p>
-                <div className="space-y-3">
-                  {sanamjItems.map((item, i) => (
-                    <div
-                      key={i}
-                      onClick={()=>toggleCheck(i)}
-                      className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all select-none
-                        ${checkedItems[i]?"border-teal/30 bg-teal/5":"border-slate-100 hover:border-slate-200 hover:bg-slate-50"}`}
-                    >
-                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${checkedItems[i]?"border-teal bg-teal":"border-slate-300"}`}>
-                        {checkedItems[i]&&<Check size={11} className="text-white"/>}
-                      </div>
-                      <p className={`text-[13px] leading-relaxed transition-colors ${checkedItems[i]?"text-slate-400 line-through":"text-slate-700"}`}>
-                        <span className="font-semibold text-teal mr-1 no-underline" style={{textDecoration:"none"}}>{i+1}.</span>
-                        {item[lang]}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-                {/* Progress */}
-                <div className="mt-5 pt-4 border-t border-slate-100">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[11px] text-slate-400">
-                      {lang==="mn"?`${checkedItems.filter(Boolean).length}/${sanamjItems.length} зүйл уншсан`:`${checkedItems.filter(Boolean).length}/${sanamjItems.length} items acknowledged`}
-                    </span>
-                    {checkedItems.every(Boolean)&&(
-                      <span className="text-[11px] text-teal font-semibold flex items-center gap-1">
-                        <Check size={12}/>{lang==="mn"?"Бүгдийг уншсан":"All acknowledged"}
-                      </span>
-                    )}
-                  </div>
-                  <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-teal rounded-full transition-all duration-500" style={{width:`${(checkedItems.filter(Boolean).length/sanamjItems.length)*100}%`}}/>
-                  </div>
-                </div>
-              </div>
-
-              {error&&<div className="bg-red-50 border border-red-100 text-red-600 text-[13px] rounded-lg px-4 py-3">{error}</div>}
-              <div className="flex gap-3">
-                <button onClick={()=>setStep(3)} className="text-[13px] text-slate-500 border border-slate-200 px-6 py-3 rounded-lg cursor-pointer">{t.booking.back[lang]}</button>
-                <button
-                  onClick={handleSubmit}
-                  disabled={loading||uploading}
-                  className="flex-1 flex items-center justify-center gap-2 text-[13px] font-medium bg-teal hover:bg-teal-dark text-white py-3 rounded-lg cursor-pointer transition-colors disabled:opacity-60"
-                >
-                  {loading?<><Loader2 size={14} className="animate-spin"/>{lang==="mn"?"Илгээж байна...":"Submitting..."}</>:t.booking.submit[lang]}
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Sidebar */}
@@ -396,7 +367,7 @@ export function BookingPageContent() {
               <span className="font-serif text-xl text-teal">{formatMNT(total)}</span>
             </div>
             {nights>0&&<p className="text-[11px] text-slate-300 mt-1 text-right">{nights} {t.booking.nights[lang]}</p>}
-            {step===4&&(
+            {step===1&&(
               <div className={`mt-4 pt-4 border-t border-slate-100 rounded-lg p-3 text-center ${ilgeehUrl?"bg-teal/5 border border-teal/20":"bg-slate-50"}`}>
                 {ilgeehUrl
                   ?<p className="text-[11px] text-teal flex items-center justify-center gap-1.5"><Check size={12}/>{lang==="mn"?"Илгээх бичиг байршуулагдсан":"Referral letter uploaded"}</p>
