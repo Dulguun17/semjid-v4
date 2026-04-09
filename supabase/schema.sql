@@ -95,8 +95,8 @@ create policy "Auth update bookings"     on bookings for update using (auth.role
 create policy "Public insert chat"       on chat_messages for insert with check (true);
 create policy "Public read own chat"     on chat_messages for select using (true);
 
--- Settings: auth read/update/insert
-create policy "Auth read settings"        on settings for select using (auth.role() = 'authenticated');
+-- Settings: public read, auth update/insert
+create policy "Public read settings"      on settings for select using (true);
 create policy "Auth insert settings"      on settings for insert with check (auth.role() = 'authenticated');
 create policy "Auth update settings"      on settings for update using (auth.role() = 'authenticated');
 

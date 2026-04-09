@@ -34,7 +34,7 @@ export default function AdminLogin() {
             <Image src="/images/logo.png" alt="Logo" fill className="object-contain" />
           </div>
           <h1 className="font-serif text-2xl text-slate-800">Admin Panel</h1>
-          <p className="text-[13px] text-slate-400 mt-1">Сэмжид Хүжирт Рашаан Сувилал</p>
+          <p className="text-[13px] text-slate-400 mt-1">Сэмжид Хужирт Рашаан Сувилал</p>
         </div>
 
         <form onSubmit={handleLogin} className="bg-white rounded-2xl p-8 shadow-sm">

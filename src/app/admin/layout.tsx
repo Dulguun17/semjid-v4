@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, FileText, Settings } from "lucide-react";
 import {
   LayoutDashboard, Calendar, Users, BedDouble,
   MessageSquare, LogOut, Menu, X, Bell
@@ -15,7 +15,9 @@ const navItems = [
   { href: "/admin",         icon: LayoutDashboard, label: "Хяналтын самбар" },
   { href: "/admin/calendar", icon: Calendar,        label: "Захиалгын календар" },
   { href: "/admin/guests",   icon: Users,           label: "Зочид" },
-  { href: "/admin/rooms",    icon: BedDouble,       label: "Өрөөний хүртээмж" },
+  { href: "/admin/rooms-management", icon: BedDouble, label: "Өрөөний удирдалга" },
+  { href: "/admin/content",  icon: FileText,        label: "Контент удирдах" },
+  { href: "/admin/settings", icon: Settings,        label: "Тохиргоо" },
   { href: "/admin/chat",     icon: MessageSquare,   label: "Чат" },
 ];
 

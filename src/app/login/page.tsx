@@ -1,14 +1,16 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { useLang } from "@/lib/lang-context";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect") || "/profile";
   const { lang } = useLang();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,7 +29,7 @@ export default function LoginPage() {
       setError(lang === "mn" ? "И-мэйл эсвэл нууц үг буруу байна." : "Invalid email or password.");
       setLoading(false);
     } else {
-      router.push("/");
+      router.push(redirectTo);
     }
   };
 
@@ -106,7 +108,7 @@ export default function LoginPage() {
 
           <div className="text-center">
             <Link
-              href="/signup"
+              href={`/signup${redirectTo !== "/profile" ? `?redirect=${redirectTo}` : ""}`}
               className="text-[13px] text-teal hover:text-teal-dark transition-colors"
             >
               {lang === "mn" ? "Бүртгэлгүй юу? Бүртгүүлэх" : "Don't have an account? Sign up"}
@@ -115,5 +117,13 @@ export default function LoginPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-teal border-t-transparent rounded-full animate-spin" /></div>}>
+      <LoginContent />
+    </Suspense>
   );
 }

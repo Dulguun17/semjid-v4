@@ -108,7 +108,7 @@ export const t = {
     cash:     { mn: "Бэлэн мөнгө",      en: "Cash on Arrival"    },
     qNote:    { mn: "QPay QR кодыг уншуулан төлбөр хийнэ үү", en: "Scan the QPay QR code to pay" },
     bankCo:   { mn: "\"ТӨБАСЭ ХХК\" — Сэмжид Хужирт", en: "\"TOBAS LLC\" — Semjid Khujirt" },
-    bankAcc:  { mn: "Данс: 4900 XXXX XXXX (Хаан Банк)", en: "Account: 4900 XXXX XXXX (Khan Bank)" },
+    bankAcc:  { mn: "Данс: 08 0005 00 5557333756 (Хаан Банк)", en: "Account: 08 0005 00 5557333756 (Khan Bank)" },
     bankRef:  { mn: "Утга: Таны нэр + ирэх өдөр", en: "Ref: Your name + check-in date" },
     submit:   { mn: "Захиалга илгээх",  en: "Submit Booking"     },
     next:     { mn: "Үргэлжлүүлэх →",  en: "Continue →"         },

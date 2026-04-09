@@ -3,14 +3,17 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, X, Phone } from "lucide-react";
+import { Menu, X, Phone, User } from "lucide-react";
 import { useLang } from "@/lib/lang-context";
 import { t, PHONE1, PHONE2 } from "@/lib/data";
+import { supabase } from "@/lib/supabase";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 export function Navbar() {
   const { lang, setLang } = useLang();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const [authUser, setAuthUser] = useState<SupabaseUser | null>(null);
   const path = usePathname();
 
   useEffect(() => {
@@ -18,6 +21,23 @@ export function Navbar() {
     window.addEventListener("scroll", fn);
     return () => window.removeEventListener("scroll", fn);
   }, []);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setAuthUser(data.session?.user ?? null);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthUser(session?.user ?? null);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  const initials = (() => {
+    const meta = authUser?.user_metadata || {};
+    const f = meta.first_name?.[0] || "";
+    const l = meta.last_name?.[0] || "";
+    return (f + l).toUpperCase() || authUser?.email?.[0]?.toUpperCase() || "U";
+  })();
 
   const links = [
     { href: "/",         label: t.nav.home },
@@ -71,9 +91,15 @@ export function Navbar() {
                 </button>
               ))}
             </div>
-            <Link href="/login" className="text-[12px] text-slate-500 hover:text-teal transition-colors">
-              {lang === "mn" ? "Нэвтрэх" : "Login"}
-            </Link>
+            {authUser ? (
+              <Link href="/profile" className="w-8 h-8 rounded-full bg-teal text-white text-[12px] font-semibold flex items-center justify-center hover:bg-teal-dark transition-colors no-underline" title={authUser.email}>
+                {initials}
+              </Link>
+            ) : (
+              <Link href="/login" className="text-[12px] text-slate-500 hover:text-teal transition-colors inline-flex items-center gap-1">
+                <User size={13} />{lang === "mn" ? "Нэвтрэх" : "Login"}
+              </Link>
+            )}
             <Link href="/booking" className="text-[12px] font-medium bg-teal hover:bg-teal-dark text-white px-5 py-2 rounded no-underline transition-colors">
               {t.nav.booking[lang]}
             </Link>
@@ -98,10 +124,15 @@ export function Navbar() {
                 </button>
               ))}
             </div>
-            <Link href="/login" onClick={() => setOpen(false)}
-              className="block text-[13px] text-slate-600 no-underline">
-              {lang === "mn" ? "Нэвтрэх" : "Login"}
-            </Link>
+            {authUser ? (
+              <Link href="/profile" onClick={() => setOpen(false)} className="block text-[13px] text-teal no-underline font-medium">
+                {lang === "mn" ? "Миний профайл" : "My Profile"}
+              </Link>
+            ) : (
+              <Link href="/login" onClick={() => setOpen(false)} className="block text-[13px] text-slate-600 no-underline">
+                {lang === "mn" ? "Нэвтрэх" : "Login"}
+              </Link>
+            )}
             <Link href="/booking" onClick={() => setOpen(false)}
               className="block text-[13px] bg-teal text-white px-5 py-3 text-center no-underline rounded">
               {t.nav.booking[lang]}

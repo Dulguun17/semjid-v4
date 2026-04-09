@@ -1,14 +1,16 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { useLang } from "@/lib/lang-context";
 import { Eye, EyeOff, ArrowLeft, CheckCircle } from "lucide-react";
 
-export default function SignupPage() {
+function SignupContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect") || "/profile";
   const { lang } = useLang();
   const [form, setForm] = useState({
     email: "",
@@ -101,7 +103,7 @@ export default function SignupPage() {
               }
             </p>
             <Link
-              href="/login"
+              href={`/login${redirectTo !== "/profile" ? `?redirect=${redirectTo}` : ""}`}
               className="inline-flex items-center gap-2 text-[13px] text-teal hover:text-teal-dark transition-colors"
             >
               {lang === "mn" ? "Нэвтрэх" : "Sign In"}
@@ -252,7 +254,7 @@ export default function SignupPage() {
 
           <div className="text-center">
             <Link
-              href="/login"
+              href={`/login${redirectTo !== "/profile" ? `?redirect=${redirectTo}` : ""}`}
               className="text-[13px] text-teal hover:text-teal-dark transition-colors"
             >
               {lang === "mn" ? "Бүртгэлтэй юу? Нэвтрэх" : "Already have an account? Sign in"}
@@ -261,5 +263,13 @@ export default function SignupPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-teal border-t-transparent rounded-full animate-spin" /></div>}>
+      <SignupContent />
+    </Suspense>
   );
 }

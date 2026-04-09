@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import Script from 'next/script';
 import "./globals.css";
 import { LangProvider } from "@/lib/lang-context";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { ChatWidget } from "@/components/ui/ChatWidget";
+import { GoogleAnalytics } from '@next/third-parties/google';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
@@ -34,19 +34,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Footer />
           <ChatWidget />
         </LangProvider>
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"
-          strategy="afterInteractive"
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'GA_MEASUREMENT_ID');
-          `}
-        </Script>
       </body>
+      <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID!} />
     </html>
   );
 }
