@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { roomInstances } from "@/lib/data";
 import { BedDouble, ChevronLeft, ChevronRight, CheckCircle, Lock, Plus, X, Loader2 } from "lucide-react";
 
@@ -27,8 +27,8 @@ export default function RoomsPage() {
 
   const load = useCallback(async () => {
     const [{ data: bk }, { data: bl }] = await Promise.all([
-      supabaseAdmin.from("bookings").select("*").not("status", "eq", "cancelled"),
-      supabaseAdmin.from("room_blocks").select("*"),
+      supabase.from("bookings").select("*").not("status", "eq", "cancelled"),
+      supabase.from("room_blocks").select("*"),
     ]);
     setBookings(bk || []);
     setBlocks(bl || []);
@@ -71,7 +71,7 @@ export default function RoomsPage() {
       setError("Эхлэх огноо дуусах огнооноос өмнө байх ёстой."); return;
     }
     setSaving(true); setError("");
-    const { error: err } = await supabaseAdmin.from("room_blocks").insert({
+    const { error: err } = await supabase.from("room_blocks").insert({
       room_id: blockForm.room_id,
       from_date: blockForm.from_date,
       to_date: blockForm.to_date,
@@ -85,7 +85,7 @@ export default function RoomsPage() {
   };
 
   const removeBlock = async (id: string) => {
-    await supabaseAdmin.from("room_blocks").delete().eq("id", id);
+    await supabase.from("room_blocks").delete().eq("id", id);
     load();
   };
 

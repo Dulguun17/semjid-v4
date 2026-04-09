@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin as supabase } from "@/lib/supabase";
+import { getSupabaseAdmin } from "@/lib/supabase";
 import { roomInstances } from "@/lib/data";
+
+const supabase = getSupabaseAdmin();
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);

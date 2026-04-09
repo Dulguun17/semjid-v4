@@ -1,20 +1,51 @@
 "use client";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Users, Check, ArrowRight } from "lucide-react";
 import { useLang } from "@/lib/lang-context";
 import { t, rooms as staticRooms, formatMNT } from "@/lib/data";
 import { getDynamicRooms } from "@/lib/dynamic-data";
-import { useState, useEffect } from "react";
 import type { RoomItem } from "@/lib/data";
+import { ReviewsSection } from "@/components/ui/ReviewsSection";
 
 export function RoomsPageContent() {
   const { lang } = useLang();
   const [rooms, setRooms] = useState<RoomItem[]>(staticRooms);
+  const [filteredRooms, setFilteredRooms] = useState<RoomItem[]>(staticRooms);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [priceFilter, setPriceFilter] = useState('');
+  const [capacityFilter, setCapacityFilter] = useState('');
 
   useEffect(() => {
     getDynamicRooms().then(setRooms);
   }, []);
+
+  useEffect(() => {
+    let filtered = rooms;
+
+    if (searchTerm) {
+      filtered = filtered.filter(room =>
+        room.name[lang].toLowerCase().includes(searchTerm.toLowerCase()) ||
+        room.desc[lang].toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (priceFilter) {
+      const maxPrice = parseInt(priceFilter);
+      filtered = filtered.filter(room => {
+        const price = room.adult2 ?? room.adult1 ?? 0;
+        return price <= maxPrice;
+      });
+    }
+
+    if (capacityFilter) {
+      const minCapacity = parseInt(capacityFilter);
+      filtered = filtered.filter(room => room.capacity >= minCapacity);
+    }
+
+    setFilteredRooms(filtered);
+  }, [rooms, searchTerm, priceFilter, capacityFilter, lang]);
 
   return (
     <div className="bg-slate-50">
@@ -66,8 +97,46 @@ export function RoomsPageContent() {
       </div>
 
       <section className="pb-14 px-6 lg:px-10">
+        <div className="max-w-7xl mx-auto mb-8">
+          <div className="bg-white rounded-lg p-6 shadow-sm">
+            <h3 className="text-lg font-semibold mb-4">Search & Filter Rooms</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Search</label>
+                <input
+                  type="text"
+                  placeholder="Search rooms..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Max Price (₮)</label>
+                <input
+                  type="number"
+                  placeholder="e.g. 500000"
+                  value={priceFilter}
+                  onChange={(e) => setPriceFilter(e.target.value)}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Min Capacity</label>
+                <input
+                  type="number"
+                  placeholder="e.g. 2"
+                  value={capacityFilter}
+                  onChange={(e) => setCapacityFilter(e.target.value)}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-5">
-          {rooms.map(r => {
+          {filteredRooms.map(r => {
             const price = r.adult2 ?? r.adult1 ?? 0;
             return (
               <div key={r.id} className="bg-white rounded-xl overflow-hidden border border-slate-100 hover:shadow-lg hover:border-teal/20 transition-all group">
@@ -94,6 +163,12 @@ export function RoomsPageContent() {
               </div>
             );
           })}
+        </div>
+      </section>
+
+      <section className="pb-14 px-6 lg:px-10">
+        <div className="max-w-7xl mx-auto">
+          <ReviewsSection />
         </div>
       </section>
     </div>

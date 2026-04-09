@@ -5,13 +5,12 @@
  * with the static data in data.ts.
  * 
  * Usage in any page/component:
- *   import { getDynamicRooms, getDynamicServices } from "@/lib/dynamic-data";
- *   const rooms    = await getDynamicRooms();
- *   const services = await getDynamicServices();
+ *   import { getDynamicRooms } from "@/lib/dynamic-data";
+ *   const rooms = await getDynamicRooms();
  */
 
 import { supabase } from "./supabase";
-import { rooms as staticRooms, services as staticServices, type RoomItem, type ServiceItem } from "./data";
+import { rooms as staticRooms, type RoomItem } from "./data";
 
 // Maps Supabase room ID → static room ID
 // Adjust these if your IDs differ
@@ -22,16 +21,6 @@ const ROOM_ID_MAP: Record<string, string> = {
   ger2:     "std4",
   ger5:     "std5",
   gerpack:  "summer",
-};
-
-// Maps Supabase service ID → static service ID
-const SERVICE_ID_MAP: Record<string, string> = {
-  massage:   "rashaan",
-  rashaanus: "shavar",
-  vann:      "baria",
-  khukh:     "pizik",
-  khar:      "europe",
-  package:   "course7",
 };
 
 export async function getDynamicRooms(): Promise<RoomItem[]> {
@@ -63,26 +52,4 @@ export async function getDynamicRooms(): Promise<RoomItem[]> {
   }
 }
 
-export async function getDynamicServices(): Promise<ServiceItem[]> {
-  try {
-    const { data, error } = await supabase
-      .from("services")
-      .select("id, price");
 
-    if (error || !data) return staticServices;
-
-    // Merge live prices into static service data
-    return staticServices.map(svc => {
-      const supabaseId = Object.entries(SERVICE_ID_MAP).find(([, v]) => v === svc.id)?.[0];
-      const live = data.find(d => d.id === supabaseId);
-      if (!live) return svc;
-
-      return {
-        ...svc,
-        price: live.price ?? svc.price,
-      };
-    });
-  } catch {
-    return staticServices;
-  }
-}

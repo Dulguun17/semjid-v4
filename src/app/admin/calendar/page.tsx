@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type Booking = {
@@ -17,7 +17,7 @@ export default function CalendarPage() {
   const [selected, setSelected] = useState<Booking[]>([]);
 
   const load = useCallback(async () => {
-    const { data } = await supabaseAdmin.from("bookings").select("*").order("check_in");
+    const { data } = await supabase.from("bookings").select("*").order("check_in");
     setBookings(data || []);
   }, []);
 

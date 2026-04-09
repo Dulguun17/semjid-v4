@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { formatMNT, rooms, services } from "@/lib/data";
 import { Search, Download, Check, X, ChevronDown, ChevronUp, Filter, FileText, ExternalLink, User, Phone, Mail, Calendar, BedDouble, Stethoscope, CreditCard, StickyNote } from "lucide-react";
 
@@ -20,7 +20,7 @@ export default function GuestsPage() {
   const [expanded, setExpanded] = useState<string|null>(null);
 
   const load = useCallback(async () => {
-    const { data } = await supabaseAdmin.from("bookings").select("*").order("created_at", { ascending: false });
+    const { data } = await supabase.from("bookings").select("*").order("created_at", { ascending: false });
     setBookings(data || []);
     setLoading(false);
   }, []);
@@ -28,7 +28,7 @@ export default function GuestsPage() {
   useEffect(() => { load(); }, [load]);
 
   const updateStatus = async (id: string, status: string) => {
-    await supabaseAdmin.from("bookings").update({ status }).eq("id", id);
+    await supabase.from("bookings").update({ status }).eq("id", id);
     load();
   };
 

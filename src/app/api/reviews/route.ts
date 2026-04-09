@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin as supabase } from "@/lib/supabase";
+import { getSupabaseAdmin } from "@/lib/supabase";
+
+const supabase = getSupabaseAdmin();
 
 // GET reviews
 export async function GET(req: Request) {

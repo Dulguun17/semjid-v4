@@ -120,9 +120,9 @@ export const t = {
     childInfo:{ mn: "Хүүхдийн үнэ: 0–2 нас 43,000₮ · 3–7 нас 53,000₮ · 8–12 нас 68,000₮", en: "Child rates: 0–2 yrs 43,000₮ · 3–7 yrs 53,000₮ · 8–12 yrs 68,000₮" },
     s4:       { mn: "Илгээх бичиг",          en: "Referral Letter"   },
     ilgeeh: {
-      title:      { mn: "Илгээх бичиг оруулах",          en: "Upload Referral Letter"          },
-      sub:        { mn: "Эмнэлгийн илгээх бичгийг энд оруулна уу. Заавал биш боловч байгаа бол заавал авчрах хэрэгтэй.", en: "Upload your medical referral letter if you have one. Required if available." },
-      upload:     { mn: "Файл сонгох (PDF эсвэл зураг)",  en: "Choose file (PDF or image)"      },
+      title:      { mn: "Илгээх бичиг татаж авах",          en: "Download Referral Letter"          },
+      sub:        { mn: "Эмнэлгийн илгээх бичгийг эндээс татаж хэвлэж бөглүүлэн авч ирнэ үү.", en: "Download the medical referral letter, print it, fill it out, and bring it with you." },
+      download:   { mn: "Татаж авах",                       en: "Download"                         },
       uploading:  { mn: "Байршуулж байна...",              en: "Uploading..."                    },
       uploaded:   { mn: "Амжилттай байршуулагдлаа ✓",     en: "Uploaded successfully ✓"         },
       optional:   { mn: "Заавал биш — цаашид авчрах боломжтой", en: "Optional — can bring on arrival" },
@@ -146,6 +146,9 @@ export const t = {
     addr:    { mn: "Өвөрхангай аймаг, Хужирт сум", en: "Khujirt soum, Uvurkhangai aimag" },
     nav:     { mn: "Цэс",          en: "Navigation" },
     contact: { mn: "Холбоо барих", en: "Contact Us"  },
+    privacy: { mn: "Нууцлал", en: "Privacy" },
+    terms: { mn: "Үйлчилгээний нөхцөл", en: "Terms" },
+    refund: { mn: "Буцаалт", en: "Refund" },
     rights:  { mn: "Бүх эрх хамгаалагдсан.", en: "All rights reserved." },
   },
 };

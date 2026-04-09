@@ -1,12 +1,13 @@
 "use client";
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
 import {
   CheckCircle, QrCode, Building2, Banknote, Check, Loader2,
-  UploadCloud, FileText, X, AlertCircle, Info, Users,
+  FileText, Info, Users,
 } from "lucide-react";
 import { useLang } from "@/lib/lang-context";
-import { t, rooms, roomInstances, services, formatMNT, PHONE1, PHONE2 } from "@/lib/data";
+import { supabase } from "@/lib/supabase";
+import { t, rooms, roomInstances, formatMNT, PHONE1, PHONE2 } from "@/lib/data";
 
 type Step = 1 | 2 | 3;
 type PayMethod = "qpay" | "card" | "bank" | "cash";
@@ -20,7 +21,6 @@ type BookingForm = {
   checkin: string;
   checkout: string;
   roomId: string;
-  svcIds: string[];
   guests: string;
   guestDetails: GuestDetail[];
   notes: string;
@@ -41,23 +41,62 @@ export function BookingPageContent() {
   const [checkingRoom, setCheckingRoom] = useState<string | null>(null);
 
   // Ilgeeh bichig state
-  const [ilgeehFile, setIlgeehFile] = useState<File | null>(null);
-  const [ilgeehUrl, setIlgeehUrl] = useState<string>("");
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState("");
-  const [isDragging, setIsDragging] = useState(false);
+  const [referralLetterUrl, setReferralLetterUrl] = useState<string>("");
   const [checkedItems, setCheckedItems] = useState<boolean[]>(
     new Array((t.booking.sanamj as { mn: string; en: string }[]).length).fill(false)
   );
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState<BookingForm>({
     fname: "", lname: "", phone: "", email: "",
     checkin: "", checkout: "", roomId: "",
-    svcIds: [] as string[], guests: "2",
+    guests: "2",
     guestDetails: [{ gender: "male", age: "" }, { gender: "male", age: "" }],
     notes: "",
   });
+
+  // Load referral letter URL
+  useEffect(() => {
+    const loadReferralLetter = async () => {
+      try {
+        // Try content table first (new system)
+        const { data: contentData } = await supabase
+          .from("content")
+          .select("value")
+          .eq("section", "images")
+          .eq("key", "referral_letter")
+          .eq("lang", lang)
+          .single();
+
+        if (contentData?.value) {
+          setReferralLetterUrl(contentData.value);
+          return;
+        }
+
+        // Fallback to settings table (old system)
+        const { data: settingsData } = await supabase
+          .from("settings")
+          .select("referral_letter_url")
+          .eq("id", "main")
+          .single();
+
+        if (settingsData?.referral_letter_url) {
+          setReferralLetterUrl(settingsData.referral_letter_url);
+        }
+      } catch (error) {
+        console.error("Failed to load referral letter:", error);
+        // Try settings table as fallback
+        try {
+          const { data } = await supabase.from("settings").select("referral_letter_url").eq("id", "main").single();
+          if (data?.referral_letter_url) {
+            setReferralLetterUrl(data.referral_letter_url);
+          }
+        } catch (fallbackError) {
+          console.error("Fallback failed:", fallbackError);
+        }
+      }
+    };
+    loadReferralLetter();
+  }, [lang]);
 
   const normalizeGuestDetails = (count: number, details: GuestDetail[]) => {
     const guestCount = Math.max(1, count);
@@ -71,6 +110,12 @@ export function BookingPageContent() {
     if (k === "guests") {
       const count = parseInt(v, 10) || 1;
       next.guestDetails = normalizeGuestDetails(count, f.guestDetails);
+    }
+    if (k === "checkin" && v) {
+      // Auto-set checkout to checkin + 7 days
+      const checkinDate = new Date(v);
+      checkinDate.setDate(checkinDate.getDate() + 7);
+      next.checkout = checkinDate.toISOString().split('T')[0];
     }
     return next;
   });
@@ -98,22 +143,15 @@ export function BookingPageContent() {
     guestDetails: f.guestDetails.map((g, i) => i === index ? { ...g, age } : g),
   }));
 
-  const toggleSvc = (id: string) => setForm(f => ({
-    ...f, svcIds: f.svcIds.includes(id) ? f.svcIds.filter(s => s !== id) : [...f.svcIds, id],
-  }));
-
   const selRoom = roomInstances.find(r => r.id === form.roomId);
   const selRoomCategory = selRoom ? rooms.find(r => r.id === selRoom.categoryId) : undefined;
   const nights = useMemo(() => {
-    if (!form.checkin || !form.checkout) return 0;
-    return Math.max(0, Math.round(
-      (new Date(form.checkout).getTime() - new Date(form.checkin).getTime()) / 86400000
-    ));
-  }, [form.checkin, form.checkout]);
+    if (!form.checkin) return 0;
+    return 7; // Fixed 7-day duration
+  }, [form.checkin]);
 
   const roomPrice = (selRoomCategory?.adult1 ?? selRoomCategory?.adult2 ?? 0) * nights * form.guestDetails.length;
-  const svcPrice = form.svcIds.reduce((s, id) => s + (services.find(sv => sv.id === id)?.price ?? 0), 0);
-  const total = roomPrice + svcPrice;
+  const total = roomPrice;
 
   const inp = "w-full bg-slate-50 border border-slate-200 focus:border-teal focus:bg-white outline-none px-4 py-2.5 text-[14px] text-slate-700 rounded-lg transition-colors";
   const lbl = "text-[11px] tracking-[0.12em] uppercase text-slate-400 block mb-1.5";
@@ -138,41 +176,6 @@ export function BookingPageContent() {
   }, [checkRoomAvailability]);
   // ───────────────────────────────────────────────────────────────────────────
 
-  const handleFileSelect = useCallback(async (file: File) => {
-    const allowed = ["application/pdf", "image/jpeg", "image/png", "image/jpg", "image/webp"];
-    if (!allowed.includes(file.type)) {
-      setUploadError(lang === "mn" ? "Зөвхөн PDF эсвэл зураг оруулна уу." : "Only PDF or image files allowed.");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setUploadError(lang === "mn" ? "Файл 10MB-аас бага байх ёстой." : "File must be under 10MB.");
-      return;
-    }
-    setIlgeehFile(file);
-    setUploadError("");
-    setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Upload failed");
-      setIlgeehUrl(data.url);
-    } catch {
-      setUploadError(lang === "mn" ? "Байршуулахад алдаа гарлаа. Дахин оролдоно уу." : "Upload failed. Please try again.");
-      setIlgeehFile(null);
-    } finally {
-      setUploading(false);
-    }
-  }, [lang]);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) handleFileSelect(file);
-  }, [handleFileSelect]);
-
   const toggleCheck = (i: number) => {
     setCheckedItems(prev => prev.map((v, idx) => idx === i ? !v : v));
   };
@@ -184,7 +187,7 @@ export function BookingPageContent() {
       const res = await fetch("/api/booking", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, payment: pay, total, ilgeehBichigUrl: ilgeehUrl || null }),
+        body: JSON.stringify({ ...form, payment: pay, total }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");
@@ -272,12 +275,20 @@ export function BookingPageContent() {
               <div className="bg-white rounded-2xl p-6 shadow-sm">
                 <h2 className="font-serif text-xl text-slate-800 mb-6">{t.booking.s1[lang]}</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                  {[[t.booking.fname,"fname","text"],[t.booking.lname,"lname","text"],[t.booking.phone,"phone","tel"],[t.booking.email,"email","email"],[t.booking.checkin,"checkin","date"],[t.booking.checkout,"checkout","date"]].map(([label,key,type]) => (
+                  {[[t.booking.fname,"fname","text"],[t.booking.lname,"lname","text"],[t.booking.phone,"phone","tel"],[t.booking.email,"email","email"]].map(([label,key,type]) => (
                     <div key={key as string}>
                       <label className={lbl}>{(label as {mn:string;en:string})[lang]}</label>
                       <input type={type as string} value={(form as unknown as Record<string,string>)[key as string]} onChange={e=>set(key as string,e.target.value)} className={inp}/>
                     </div>
                   ))}
+                  <div>
+                    <label className={lbl}>{t.booking.checkin[lang]}</label>
+                    <input type="date" value={form.checkin} onChange={e=>set("checkin",e.target.value)} className={inp}/>
+                  </div>
+                  <div>
+                    <label className={lbl}>{t.booking.checkout[lang]}</label>
+                    <input type="text" value={form.checkout ? new Date(form.checkout).toLocaleDateString(lang === "mn" ? "mn-MN" : "en-US") : ""} readOnly className={inp + " bg-slate-100 cursor-not-allowed"}/>
+                  </div>
                 </div>
                 <div className="mb-2">
                   <label className={lbl}>{t.booking.numGuests[lang]}</label>
@@ -336,38 +347,22 @@ export function BookingPageContent() {
                   </div>
                 </div>
                 <div className="mt-5">
-                  {!ilgeehFile ? (
-                    <div
-                      onDragOver={e=>{e.preventDefault();setIsDragging(true);}}
-                      onDragLeave={()=>setIsDragging(false)}
-                      onDrop={handleDrop}
-                      onClick={()=>fileInputRef.current?.click()}
-                      className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${isDragging?"border-teal bg-teal/5":"border-slate-200 hover:border-teal/50 hover:bg-slate-50"}`}
+                  {referralLetterUrl ? (
+                    <a
+                      href={referralLetterUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-3 bg-teal text-white px-6 py-4 rounded-xl hover:bg-teal-dark transition-colors cursor-pointer"
                     >
-                      <UploadCloud size={36} className={`mx-auto mb-3 ${isDragging?"text-teal":"text-slate-300"}`}/>
-                      <p className="text-[14px] text-slate-500 font-medium">{t.booking.ilgeeh.dragDrop[lang]}</p>
-                      <p className="text-[11px] text-slate-300 mt-1">PDF, JPG, PNG — max 10MB</p>
-                      <input ref={fileInputRef} type="file" accept="application/pdf,image/*" className="hidden" onChange={e=>{const f=e.target.files?.[0];if(f)handleFileSelect(f);}}/>
-                    </div>
+                      <FileText size={20} />
+                      <span className="font-medium">{t.booking.ilgeeh.download[lang]}</span>
+                    </a>
                   ) : (
-                    <div className={`border rounded-xl p-4 flex items-center gap-3 ${ilgeehUrl?"border-teal/30 bg-teal/5":"border-slate-200 bg-slate-50"}`}>
-                      <FileText size={24} className={ilgeehUrl?"text-teal":"text-slate-400"}/>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-medium text-slate-700 truncate">{ilgeehFile.name}</p>
-                        <p className={`text-[12px] mt-0.5 ${ilgeehUrl?"text-teal":"text-slate-400"}`}>
-                          {uploading ? t.booking.ilgeeh.uploading[lang] : ilgeehUrl ? t.booking.ilgeeh.uploaded[lang] : uploadError}
-                        </p>
-                      </div>
-                      {uploading
-                        ? <Loader2 size={18} className="text-teal animate-spin shrink-0"/>
-                        : <button onClick={()=>{setIlgeehFile(null);setIlgeehUrl("");setUploadError("");}} className="text-slate-400 hover:text-red-400 transition-colors cursor-pointer shrink-0"><X size={18}/></button>
-                      }
+                    <div className="text-center py-8 text-slate-400">
+                      <FileText size={36} className="mx-auto mb-3 text-slate-200"/>
+                      <p className="text-[13px]">Файл байхгүй</p>
                     </div>
                   )}
-                  {uploadError&&<div className="mt-2 flex items-center gap-2 text-red-500 text-[12px]"><AlertCircle size={14}/>{uploadError}</div>}
-                  <p className="text-[11px] text-slate-400 mt-3 flex items-center gap-1.5">
-                    <Info size={12} className="shrink-0"/>{t.booking.ilgeeh.optional[lang]}
-                  </p>
                 </div>
               </div>
 
@@ -510,27 +505,17 @@ export function BookingPageContent() {
               </div>
 
               <div className="bg-white rounded-2xl p-6 shadow-sm">
-                <h2 className="font-serif text-xl text-slate-800 mb-3">{t.booking.addTreat[lang]}</h2>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-5">
+                <h2 className="font-serif text-xl text-slate-800 mb-3">{lang === "mn" ? "Эмчилгээний үйлчилгээ" : "Treatment Services"}</h2>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <div className="flex items-start gap-2">
                     <Info size={16} className="text-blue-500 shrink-0 mt-0.5" />
                     <div className="text-[12px] text-blue-700 leading-relaxed">
                       {lang === "mn" 
-                        ? "Өрөө захиалахад бүх эмчилгээний үйлчилгээ багтсан байдаг. Зочид ирсний дараа мэргэжлийн эмч нар шинжилгээ хийж, өвчний байдлаас хамааран тохирсон эмчилгээг үзүүлнэ."
-                        : "All treatment services are included with room booking. Upon arrival, specialized doctors will examine guests and provide appropriate treatments based on their medical condition."
+                        ? "Өрөө захиалахад эмчилгээний үйлчилгээ багтсан байна. Ирсний дараа мэргэжлийн эмч шинжилгээ хийж, өвчний байдлаас хамааран тохирсон эмчилгээг зохион байгуулна."
+                        : "Treatment services are included with your room booking. Upon arrival, our medical team will assess each guest and provide treatment based on their condition."
                       }
                     </div>
                   </div>
-                </div>
-                <div className="space-y-2">
-                  {services.map(s => { const sel = form.svcIds.includes(s.id); return (
-                    <div key={s.id} onClick={()=>toggleSvc(s.id)} className={`flex items-center p-3.5 border rounded-lg cursor-pointer transition-all ${sel?"border-teal bg-teal/4":"border-slate-100 hover:border-slate-200"}`}>
-                      <div className="flex items-center gap-3">
-                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${sel?"border-teal bg-teal":"border-slate-200"}`}>{sel&&<Check size={11} className="text-white"/>}</div>
-                        <div><div className="text-[13px] font-medium text-slate-700">{s.name[lang]}</div><div className="text-[11px] text-slate-400">{s.duration}</div></div>
-                      </div>
-                    </div>
-                  ); })}
                 </div>
               </div>
 
@@ -572,20 +557,12 @@ export function BookingPageContent() {
                 {(pay==="card"||pay==="cash")&&(<div className="border border-slate-100 rounded-xl p-5 bg-slate-50 text-center"><p className="text-[14px] text-slate-500">{pay==="card"?(lang==="mn"?"Ирэх үедээ картаар төлнө үү.":"Pay by card on arrival."):(lang==="mn"?"Ирэх үедээ бэлэн мөнгөөр төлнө үү.":"Pay in cash upon arrival.")}</p></div>)}
               </div>
 
-              {/* Uploaded letter status */}
-              {ilgeehUrl && (
-                <div className="bg-teal/5 border border-teal/20 rounded-xl px-4 py-3 flex items-center gap-2">
-                  <Check size={14} className="text-teal shrink-0"/>
-                  <p className="text-[12px] text-teal">{lang==="mn"?"Илгээх бичиг байршуулагдсан":"Referral letter uploaded"}</p>
-                </div>
-              )}
-
               {error&&<div className="bg-red-50 border border-red-100 text-red-600 text-[13px] rounded-lg px-4 py-3">{error}</div>}
               <div className="flex gap-3">
                 <button onClick={()=>setStep(2)} className="text-[13px] text-slate-500 border border-slate-200 px-6 py-3 rounded-lg cursor-pointer">{t.booking.back[lang]}</button>
                 <button
                   onClick={handleSubmit}
-                  disabled={loading||uploading}
+                  disabled={loading}
                   className="flex-1 flex items-center justify-center gap-2 text-[13px] font-medium bg-teal hover:bg-teal-dark text-white py-3 rounded-lg cursor-pointer transition-colors disabled:opacity-60"
                 >
                   {loading?<><Loader2 size={14} className="animate-spin"/>{lang==="mn"?"Илгээж байна...":"Submitting..."}</>:t.booking.submit[lang]}
@@ -600,7 +577,6 @@ export function BookingPageContent() {
           <div className="bg-white rounded-2xl p-5 shadow-sm sticky top-32">
             <h3 className="font-serif text-[17px] text-slate-800 mb-4">{t.booking.summary[lang]}</h3>
             {selRoom && selRoomCategory ? (<><div className="relative h-28 rounded-lg overflow-hidden mb-3"><Image src={selRoomCategory.img} alt={`${selRoom.type[lang]} ${selRoom.number}`} fill className="object-cover"/></div><div className="flex justify-between mb-1"><span className="text-[13px] text-slate-500">{`${selRoom.type[lang]} ${selRoom.number}`}</span><span className="text-[13px] font-medium text-slate-700">{formatMNT(selRoomCategory.adult1 ?? selRoomCategory.adult2 ?? 0)} × {form.guestDetails.length} × {nights} = {formatMNT(roomPrice)}</span></div></>) : <p className="text-[13px] text-slate-300 mb-3">{t.booking.noRoom[lang]}</p>}
-            {form.svcIds.length>0&&(<div className="border-t border-slate-100 pt-3 space-y-1.5 mt-2">{form.svcIds.map(id=>{const s=services.find(sv=>sv.id===id);return s?<div key={id} className="flex items-center"><span className="text-[12px] text-slate-400">{s.name[lang]}</span></div>:null;})}</div>)}
             <div className="mt-3 pt-3 border-t border-slate-100">
               <div className="text-[13px] text-slate-500 mb-2">{t.booking.guestInfo[lang]}</div>
               <div className="space-y-1">
@@ -617,13 +593,6 @@ export function BookingPageContent() {
               <span className="font-serif text-xl text-teal">{formatMNT(total)}</span>
             </div>
             {nights>0&&<p className="text-[11px] text-slate-300 mt-1 text-right">{nights} {t.booking.nights[lang]}</p>}
-            {ilgeehUrl && (
-              <div className="mt-4 pt-4 border-t border-slate-100 bg-teal/5 rounded-lg p-3 text-center">
-                <p className="text-[11px] text-teal flex items-center justify-center gap-1.5">
-                  <Check size={12}/>{lang==="mn"?"Илгээх бичиг байршуулагдсан":"Referral letter uploaded"}
-                </p>
-              </div>
-            )}
             <div className="mt-4 pt-4 border-t border-slate-100">
               <p className="text-[11px] text-slate-400 mb-1">{lang==="mn"?"Захиалгын утас:":"Hotline:"}</p>
               <a href={`tel:${PHONE1.replace(/-/g,"")}`} className="text-[15px] font-semibold text-teal no-underline block">{PHONE1}</a>

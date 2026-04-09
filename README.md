@@ -17,11 +17,10 @@ Full-featured bilingual (Mongolian / English) resort website built with **Next.j
 
 | Route | Description |
 |---|---|
-| `/` | Home — Hero, Stats, About, Services, Rooms, Gallery, Testimonials |
+| `/` | Home — Hero, Stats, About, Rooms, Gallery, Testimonials |
 | `/about` | Origin story, mineral properties, location guide |
 | `/rooms` | All 4 rooms with amenities and booking |
-| `/services` | All 6 treatments with prices |
-| `/booking` | 3-step: Personal → Room+Services → Payment (QPay/Bank/Cash) |
+| `/booking` | 3-step: Personal → Room → Payment (QPay/Bank/Cash) |
 
 ## 🚀 Getting Started
 

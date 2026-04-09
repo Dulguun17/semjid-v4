@@ -71,6 +71,9 @@ export function Navbar() {
                 </button>
               ))}
             </div>
+            <Link href="/login" className="text-[12px] text-slate-500 hover:text-teal transition-colors">
+              {lang === "mn" ? "Нэвтрэх" : "Login"}
+            </Link>
             <Link href="/booking" className="text-[12px] font-medium bg-teal hover:bg-teal-dark text-white px-5 py-2 rounded no-underline transition-colors">
               {t.nav.booking[lang]}
             </Link>
@@ -95,6 +98,10 @@ export function Navbar() {
                 </button>
               ))}
             </div>
+            <Link href="/login" onClick={() => setOpen(false)}
+              className="block text-[13px] text-slate-600 no-underline">
+              {lang === "mn" ? "Нэвтрэх" : "Login"}
+            </Link>
             <Link href="/booking" onClick={() => setOpen(false)}
               className="block text-[13px] bg-teal text-white px-5 py-3 text-center no-underline rounded">
               {t.nav.booking[lang]}

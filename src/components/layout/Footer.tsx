@@ -25,7 +25,7 @@ export function Footer() {
         <div>
           <h4 className="text-[10px] tracking-widest uppercase text-slate-500 mb-4">{t.footer.nav[lang]}</h4>
           <ul className="space-y-2.5 list-none">
-            {[["/",t.nav.home],["/about",t.nav.about],["/rooms",t.nav.rooms],["/services",t.nav.services],["/booking",t.nav.booking]].map(([href,label]) => (
+            {[["/",t.nav.home],["/about",t.nav.about],["/rooms",t.nav.rooms],["/booking",t.nav.booking],["/faq", {mn:"Тусламж", en:"FAQ"}],["/privacy",t.footer.privacy],["/terms",t.footer.terms],["/refund-policy",t.footer.refund]].map(([href,label]) => (
               <li key={href as string}>
                 <Link href={href as string} className="text-[13px] text-slate-500 hover:text-white no-underline transition-colors">
                   {(label as {mn:string;en:string})[lang]}

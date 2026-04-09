@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { getSupabaseAdmin } from "@/lib/supabase";
+
+const supabaseAdmin = getSupabaseAdmin();
 
 const ALLOWED_TYPES: Record<string, string> = {
   "application/pdf": "pdf",

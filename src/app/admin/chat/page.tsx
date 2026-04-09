@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { Send, MessageSquare, RefreshCw } from "lucide-react";
 
 type Message = { id: string; session_id: string; sender: string; sender_name: string; message: string; created_at: string; };
@@ -15,7 +15,7 @@ export default function AdminChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const loadSessions = useCallback(async () => {
-    const { data } = await supabaseAdmin.from("chat_messages").select("*").order("created_at", { ascending: false });
+    const { data } = await supabase.from("chat_messages").select("*").order("created_at", { ascending: false });
     if (!data) return;
     const map = new Map<string, Session>();
     data.forEach(m => {
@@ -30,7 +30,7 @@ export default function AdminChatPage() {
   }, []);
 
   const loadMessages = useCallback(async (sid: string) => {
-    const { data } = await supabaseAdmin.from("chat_messages").select("*").eq("session_id", sid).order("created_at", { ascending: true });
+    const { data } = await supabase.from("chat_messages").select("*").eq("session_id", sid).order("created_at", { ascending: true });
     setMessages(data || []);
   }, []);
 
