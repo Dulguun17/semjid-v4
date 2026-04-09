@@ -98,6 +98,11 @@ export function BookingPageContent() {
     loadReferralLetter();
   }, [lang]);
 
+  // Calculate min and max dates for booking (today to +3 months)
+  const today = new Date();
+  const minDate = today.toISOString().split('T')[0];
+  const maxDate = new Date(today.getFullYear(), today.getMonth() + 3, today.getDate()).toISOString().split('T')[0];
+
   const normalizeGuestDetails = (count: number, details: GuestDetail[]) => {
     const guestCount = Math.max(1, count);
     const next = [...details];
@@ -183,19 +188,64 @@ export function BookingPageContent() {
   const handleSubmit = async () => {
     setLoading(true);
     setError("");
+    
     try {
+      // Validate all required fields
+      if (!form.fname?.trim()) throw new Error(lang === "mn" ? "Нэрийг оруулна уу" : "First name is required");
+      if (!form.lname?.trim()) throw new Error(lang === "mn" ? "Овог оруулна уу" : "Last name is required");
+      if (!form.phone?.trim()) throw new Error(lang === "mn" ? "Утасны дугаарыг оруулна уу" : "Phone is required");
+      if (!form.email?.trim()) throw new Error(lang === "mn" ? "И-мэйлийг оруулна уу" : "Email is required");
+      if (!form.checkin) throw new Error(lang === "mn" ? "Ирэх огнооны оруулна уу" : "Check-in date is required");
+      if (!form.checkout) throw new Error(lang === "mn" ? "Явах огнооны оруулна уу" : "Check-out date is required");
+      if (!form.roomId?.trim()) throw new Error(lang === "mn" ? "Өрөө сонгоно уу" : "Please select a room");
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(form.email)) throw new Error(lang === "mn" ? "И-мэйлийн формат буруу байна" : "Invalid email format");
+
+      console.log("Starting payment submission with:", {
+        fname: form.fname,
+        lname: form.lname,
+        phone: form.phone,
+        email: form.email,
+        checkin: form.checkin,
+        checkout: form.checkout,
+        roomId: form.roomId,
+        guests: form.guests,
+        payment: pay,
+        total,
+      });
+
       const res = await fetch("/api/booking", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, payment: pay, total }),
+        body: JSON.stringify({ 
+          ...form, 
+          payment: pay, 
+          total,
+          guests: parseInt(form.guests) || 1,
+        }),
       });
+      
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed");
+      console.log("API Response:", { status: res.status, data });
+
+      if (!res.ok) {
+        throw new Error(data.error || `Server error: ${res.status}`);
+      }
+
+      if (!data.ref) {
+        throw new Error("No booking reference received from server");
+      }
+
+      console.log("✅ Booking successful:", data);
       setBookingRef(data.ref);
-      setSpecialCode(data.specialCode);
+      setSpecialCode(data.specialCode || "");
       setDone(true);
-    } catch {
-      setError(lang === "mn" ? "Захиалга илгээхэд алдаа гарлаа. Дахин оролдоно уу." : "Failed to submit. Please try again.");
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Unknown error";
+      console.error("❌ Booking error:", errorMsg);
+      setError(errorMsg || (lang === "mn" ? "Захиалга илгээхэд алдаа гарлаа. Дахин оролдоно уу." : "Failed to submit. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -283,7 +333,8 @@ export function BookingPageContent() {
                   ))}
                   <div>
                     <label className={lbl}>{t.booking.checkin[lang]}</label>
-                    <input type="date" value={form.checkin} onChange={e=>set("checkin",e.target.value)} className={inp}/>
+                    <input type="date" value={form.checkin} min={minDate} max={maxDate} onChange={e=>set("checkin",e.target.value)} className={inp}/>
+                    <p className="text-[10px] text-slate-500 mt-1">{lang === "mn" ? "3 сарын дараа хүртэл захиалах боломжтой" : "Can book up to 3 months in advance"}</p>
                   </div>
                   <div>
                     <label className={lbl}>{t.booking.checkout[lang]}</label>

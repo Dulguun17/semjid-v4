@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { roomInstances } from "@/lib/data";
+import { checkRoomAvailability, getRoomOccupancyRate } from "@/lib/availability";
 
 const supabase = getSupabaseAdmin();
 

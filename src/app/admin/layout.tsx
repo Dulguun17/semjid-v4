@@ -3,18 +3,21 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { TrendingUp, FileText, Settings } from "lucide-react";
+import { TrendingUp, FileText, Settings, CreditCard, Star } from "lucide-react";
 import {
   LayoutDashboard, Calendar, Users, BedDouble,
-  MessageSquare, LogOut, Menu, X, Bell
+  MessageSquare, LogOut,Menu, X, Bell, BookOpen
 } from "lucide-react";
 import Image from "next/image";
 
 const navItems = [
   { href: "/admin/analytics", icon: TrendingUp, label: "Аналитик" },
   { href: "/admin",         icon: LayoutDashboard, label: "Хяналтын самбар" },
+  { href: "/admin/bookings/manage", icon: BookOpen, label: "Захиалга удирдах" },
+  { href: "/admin/payments", icon: CreditCard, label: "Төлбөр" },
   { href: "/admin/calendar", icon: Calendar,        label: "Захиалгын календар" },
   { href: "/admin/guests",   icon: Users,           label: "Зочид" },
+  { href: "/admin/reviews",  icon: Star,            label: "Санал үнэлгээ" },
   { href: "/admin/rooms-management", icon: BedDouble, label: "Өрөөний удирдалга" },
   { href: "/admin/content",  icon: FileText,        label: "Контент удирдах" },
   { href: "/admin/settings", icon: Settings,        label: "Тохиргоо" },

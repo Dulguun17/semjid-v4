@@ -11,7 +11,10 @@ export function ReviewForm({ roomId }: { roomId?: string }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !comment.trim()) return;
+    if (!name.trim() || !comment.trim()) {
+      alert('Please fill in all fields');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -21,26 +24,36 @@ export function ReviewForm({ roomId }: { roomId?: string }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          room_id: roomId,
+          room_id: roomId || 'general',
           fname: name.trim(),
-          rating,
+          rating: parseInt(rating),
           comment: comment.trim(),
         }),
       });
 
+      const responseData = await response.json();
+
       if (!response.ok) {
-        throw new Error('Failed to submit review');
+        console.error('Review submission error:', responseData);
+        throw new Error(responseData.error || 'Failed to submit review');
       }
+
+      console.log('✅ Review submitted:', responseData);
 
       // Reset form
       setName('');
       setComment('');
       setRating(5);
-      alert('Review submitted successfully!');
-      window.location.reload(); // Simple refresh to show new review
+      alert('✅ आपकी समीक्षा सफलतापूर्वक जमा की गई! (Your review was submitted successfully!)');
+      
+      // Reload to show new review
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } catch (error) {
-      console.error('Error submitting review:', error);
-      alert('Failed to submit review. Please try again.');
+      console.error('❌ Error submitting review:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to submit review. Please try again.';
+      alert(errorMsg);
     } finally {
       setSubmitting(false);
     }
