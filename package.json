@@ -6,7 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit --incremental false",
+    "test": "node --test tests/bed-availability.test.mjs tests/payment-ledger.test.mjs tests/ceo-report.test.mjs tests/customer-experience.test.mjs tests/customer-feedback-api.test.mjs",
+    "test:bed-availability": "node --test tests/bed-availability.test.mjs",
+    "test:payment-ledger": "node --test tests/payment-ledger.test.mjs",
+    "test:ceo-report": "node --test tests/ceo-report.test.mjs",
+    "test:customer-experience": "node --test tests/customer-experience.test.mjs"
   },
   "dependencies": {
     "@next/third-parties": "^16.2.3",

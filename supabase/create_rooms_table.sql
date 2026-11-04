@@ -9,6 +9,8 @@
 -- Create rooms table
 create table if not exists rooms (
   id          text primary key,
+  name_mn     text not null,
+  name_en     text not null,
   adult1      integer,
   adult2      integer,
   child02     integer,
@@ -23,31 +25,23 @@ create table if not exists rooms (
 -- Enable RLS
 alter table rooms enable row level security;
 
--- RLS Policies
--- Allow authenticated users to read and update rooms
+-- Workspace access policies are installed by workspace_roles_migration.sql.
+-- Remove the legacy broad policies if this setup script is re-run.
 drop policy if exists "Auth read rooms" on rooms;
-create policy "Auth read rooms"
-  on rooms for select using (auth.role() = 'authenticated');
-
 drop policy if exists "Auth update rooms" on rooms;
-create policy "Auth update rooms"
-  on rooms for update using (auth.role() = 'authenticated');
-
 drop policy if exists "Auth insert rooms" on rooms;
-create policy "Auth insert rooms"
-  on rooms for insert with check (auth.role() = 'authenticated');
 
 -- Insert initial rooms data (if starting fresh)
 -- Uncomment below to auto-populate with your room IDs
 /*
-INSERT INTO rooms (id, adult1, adult2, child02, img) VALUES
-('luxury', NULL, 113000, 43000, '/images/image3.jpeg'),
-('halflux', NULL, 93000, 43000, '/images/image4.jpeg'),
-('superlux', NULL, 135000, 43000, '/images/image4.jpeg'),
-('fullux', NULL, 150000, 43000, '/images/image3.jpeg'),
-('std2', NULL, 68000, 43000, '/images/image5.jpeg'),
-('std4', NULL, 68000, 43000, '/images/image6.jpeg'),
-('std5', NULL, 75000, 43000, '/images/image6.jpeg'),
-('summer', NULL, 53000, 43000, '/images/image1.jpg')
+INSERT INTO rooms (id, name_mn, name_en, adult1, adult2, child02, img) VALUES
+('luxury', 'Люкс өрөө', 'Luxury Room', NULL, 113000, 43000, '/images/image3.jpeg'),
+('halflux', 'Хагас Люкс өрөө', 'Half-Luxury Room', NULL, 93000, 43000, '/images/image4.jpeg'),
+('superlux', 'Супер Люкс өрөө', 'Super Lux Room', NULL, 135000, 43000, '/images/image4.jpeg'),
+('fullux', 'Фулл Люкс өрөө', 'Full Lux Room', NULL, 150000, 43000, '/images/image3.jpeg'),
+('std2', '2 Ортой Стандарт өрөө', '2-Bed Standard Room', 88000, NULL, 43000, '/images/image5.jpeg'),
+('std4', '4 Ортой Стандарт өрөө', '4-Bed Standard Room', 83000, 88000, 43000, '/images/image6.jpeg'),
+('std5', '5 Ортой Стандарт өрөө', '5-Bed Standard Room', 83000, NULL, 43000, '/images/image6.jpeg'),
+('summer', 'Зуны байр', 'Summer Cottage', 78000, NULL, 43000, '/images/image1.jpg')
 ON CONFLICT (id) DO NOTHING;
 */

@@ -1,66 +1,144 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
-import { roomInstances } from "@/lib/data";
-import { BedDouble, ChevronLeft, ChevronRight, CheckCircle, Lock, Plus, X, Loader2 } from "lucide-react";
+import { rooms as roomTypes } from "@/lib/data";
+import { workspaceAuthorizationHeaders } from "@/lib/workspace-api";
+import { ulaanbaatarToday } from "@/lib/bed-availability";
+import { BedDouble, ChevronLeft, ChevronRight, Loader2, Lock, X } from "lucide-react";
 
 type Booking = {
   id: string; ref: string; fname: string; lname: string;
   check_in: string; check_out: string; room_id: string; status: string;
-  guest_details?: { gender: string; age?: string }[];
+  guests: number;
+  bed_allocation_required: boolean;
+  actual_check_in_at: string | null;
+  actual_check_out_at: string | null;
+  bed_assignments: { bed_id: string; guest_gender: string; released_at: string | null }[];
 };
 
 type Block = {
-  id: string; room_id: string; from_date: string; to_date: string; reason: string;
+  id: string; room_id: string; from_date: string; to_date: string; reason: string | null;
+};
+
+type RoomUnit = {
+  id: string;
+  category_id: string;
+  capacity: number;
+  beds: { id: string; bed_number: number }[];
 };
 
 const MONTHS = ["1-р сар","2-р сар","3-р сар","4-р сар","5-р сар","6-р сар","7-р сар","8-р сар","9-р сар","10-р сар","11-р сар","12-р сар"];
 
+function centerDate() {
+  return new Date(`${ulaanbaatarToday()}T12:00:00`);
+}
+
 export default function RoomsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
-  const [date, setDate] = useState(new Date());
+  const [roomUnits, setRoomUnits] = useState<RoomUnit[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [date, setDate] = useState(centerDate);
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [blockForm, setBlockForm] = useState({ room_id: "", from_date: "", to_date: "", reason: "Засвар үйлчилгээ" });
   const [error, setError] = useState("");
 
-  const load = useCallback(async () => {
-    const [{ data: bk }, { data: bl }] = await Promise.all([
-      supabase.from("bookings").select("*").not("status", "eq", "cancelled"),
-      supabase.from("room_blocks").select("*"),
+  const fetchAvailability = useCallback(async () => {
+    const headers = await workspaceAuthorizationHeaders();
+    const [bookingsResponse, roomsResponse] = await Promise.all([
+      fetch("/api/staff/bookings", { headers }),
+      fetch("/api/staff/rooms", { headers }),
     ]);
-    setBookings(bk || []);
-    setBlocks(bl || []);
+    const [bookingData, roomData] = await Promise.all([bookingsResponse.json(), roomsResponse.json()]);
+    if (!bookingsResponse.ok) throw new Error(bookingData.error || "Захиалгын мэдээлэл ачаалж чадсангүй.");
+    if (!roomsResponse.ok) throw new Error(roomData.error || "Өрөөний мэдээлэл ачаалж чадсангүй.");
+    return {
+      bookings: (bookingData.bookings || []) as Booking[],
+      blocks: (roomData.blocks || []) as Block[],
+      rooms: (roomData.rooms || []).map((room: { id: string; category_id: string; category?: { capacity?: number } | null; beds?: RoomUnit["beds"] }) => ({
+        id: room.id,
+        category_id: room.category_id,
+        capacity: room.category?.capacity || 0,
+        beds: room.beds || [],
+      })) as RoomUnit[],
+    };
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  const load = useCallback(async () => {
+    try {
+      const availability = await fetchAvailability();
+      setBookings(availability.bookings);
+      setBlocks(availability.blocks);
+      setRoomUnits(availability.rooms);
+      setLoaded(true);
+    } catch (loadError) {
+      console.error("Failed to load room availability", loadError);
+      setError(loadError instanceof Error ? loadError.message : "Өрөөний хүртээмжийг шалгаж чадсангүй.");
+    }
+  }, [fetchAvailability]);
+
+  useEffect(() => {
+    let active = true;
+    fetchAvailability()
+      .then(availability => {
+        if (!active) return;
+        setBookings(availability.bookings);
+        setBlocks(availability.blocks);
+        setRoomUnits(availability.rooms);
+        setLoaded(true);
+      })
+      .catch(loadError => {
+        console.error("Failed to load room availability", loadError);
+        if (active) setError(loadError instanceof Error ? loadError.message : "Өрөөний хүртээмжийг шалгаж чадсангүй.");
+      });
+    return () => { active = false; };
+  }, [fetchAvailability]);
 
   const year = date.getFullYear();
   const month = date.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+  const today = centerDate();
+  const todayStr = ulaanbaatarToday();
 
-  const getBookingsForDay = (roomId: string, day: number) => {
-    const d = `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-    return bookings.filter(b => b.room_id === roomId && b.check_in <= d && b.check_out > d);
+  const dateForDay = (day: number) => `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+  const isActiveOnDate = (booking: Booking, selectedDate: string) =>
+    ["pending", "confirmed", "checked_in"].includes(booking.status) &&
+    ((booking.check_in <= selectedDate && booking.check_out > selectedDate) ||
+      (booking.status === "checked_in" &&
+        booking.actual_check_out_at === null && selectedDate >= todayStr));
+  const hasLegacyHoldForDate = (room: RoomUnit, selectedDate: string) => {
+    return bookings.some(booking =>
+      booking.bed_allocation_required &&
+      (booking.room_id === room.id || booking.room_id === room.category_id) &&
+      isActiveOnDate(booking, selectedDate)
+    );
   };
-
-  const getBookingForDay = (roomId: string, day: number) => {
-    const d = `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-    return bookings.find(b => b.room_id === roomId && b.check_in <= d && b.check_out > d);
+  const getLegacyHoldForDay = (room: RoomUnit, day: number) => hasLegacyHoldForDate(room, dateForDay(day));
+  const getBedAssignmentForDate = (roomId: string, bedId: string, selectedDate: string) => {
+    return bookings.find(booking =>
+      booking.room_id === roomId && isActiveOnDate(booking, selectedDate) &&
+      booking.bed_assignments?.some(assignment =>
+        assignment.bed_id === bedId && !assignment.released_at
+      )
+    );
   };
+  const getBedAssignmentForDay = (roomId: string, bedId: string, day: number) =>
+    getBedAssignmentForDate(roomId, bedId, dateForDay(day));
 
-  const getBlockForDay = (roomId: string, day: number) => {
-    const d = `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-    return blocks.find(b => b.room_id === roomId && b.from_date <= d && b.to_date >= d);
-  };
+  const getBlockForDate = (roomId: string, d: string) =>
+    blocks.find(b => b.room_id === roomId && b.from_date <= d && b.to_date >= d);
+  const getBlockForDay = (roomId: string, day: number) => getBlockForDate(roomId, dateForDay(day));
 
-  const occupiedToday = roomInstances.filter(r =>
-    bookings.some(b => b.room_id === r.id && b.check_in <= todayStr && b.check_out > todayStr) ||
-    blocks.some(b => b.room_id === r.id && b.from_date <= todayStr && b.to_date >= todayStr)
+  const reservedBedsToday = roomUnits.reduce((total, room) =>
+    total + room.beds.filter(bed => getBedAssignmentForDate(room.id, bed.id, todayStr)).length, 0);
+  const availableBedsToday = roomUnits.reduce((total, room) => {
+    if (hasLegacyHoldForDate(room, todayStr) || getBlockForDate(room.id, todayStr)) return total;
+    return total + room.beds.filter(bed => !getBedAssignmentForDate(room.id, bed.id, todayStr)).length;
+  }, 0);
+  const legacyAllocationsToday = bookings.filter(booking =>
+    booking.bed_allocation_required && isActiveOnDate(booking, todayStr)
   ).length;
 
   const saveBlock = async () => {
@@ -85,8 +163,15 @@ export default function RoomsPage() {
   };
 
   const removeBlock = async (id: string) => {
-    await supabase.from("room_blocks").delete().eq("id", id);
-    load();
+    const { error: updateError } = await supabase.from("room_blocks")
+      .update({ cancelled_at: new Date().toISOString() })
+      .eq("id", id);
+    if (updateError) {
+      console.error("Failed to cancel room closure", updateError);
+      setError(updateError.message);
+      return;
+    }
+    await load();
   };
 
   const inp = "w-full bg-slate-50 border border-slate-200 focus:border-teal outline-none px-4 py-2.5 text-[13px] text-slate-700 rounded-lg transition-colors";
@@ -101,18 +186,22 @@ export default function RoomsPage() {
         </div>
         <button
           onClick={() => setShowBlockModal(true)}
+          disabled={!loaded}
           className="flex items-center gap-2 bg-teal hover:bg-teal-dark text-white px-4 py-2.5 rounded-xl text-[13px] font-medium transition-colors cursor-pointer"
         >
           <Lock size={15}/> Өрөө хаах
         </button>
       </div>
+      {error && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p>}
+      {!loaded && !error && <p role="status" className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Өрөөний хүртээмжийг ачаалж байна…</p>}
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
-          { label: "Нийт өрөө", value: roomInstances.length, color: "text-slate-700", bg: "bg-slate-100" },
-          { label: "Өнөөдөр эзэлсэн", value: occupiedToday, color: "text-red-600", bg: "bg-red-50" },
-          { label: "Өнөөдөр чөлөөтэй", value: roomInstances.length - occupiedToday, color: "text-emerald-600", bg: "bg-emerald-50" },
+          { label: "Бүртгэлтэй ор", value: roomUnits.reduce((total, room) => total + room.beds.length, 0), color: "text-slate-700", bg: "bg-slate-100" },
+          { label: "Өнөөдрийн захиалгатай ор", value: reservedBedsToday, color: "text-red-600", bg: "bg-red-50" },
+          { label: "Өнөөдрийн боломжтой ор", value: availableBedsToday, color: "text-emerald-600", bg: "bg-emerald-50" },
+          { label: "Ор хуваарилах хуучин захиалга", value: legacyAllocationsToday, color: "text-amber-700", bg: "bg-amber-50" },
         ].map(({ label, value, color, bg }) => (
           <div key={label} className={`${bg} rounded-2xl p-5`}>
             <div className={`text-3xl font-bold ${color}`}>{value}</div>
@@ -127,13 +216,14 @@ export default function RoomsPage() {
           <h2 className="font-semibold text-slate-800 mb-4 flex items-center gap-2"><Lock size={15} className="text-red-400"/> Гараар хаасан өрөөнүүд</h2>
           <div className="space-y-2">
             {blocks.map(b => {
-              const room = roomInstances.find(r => r.id === b.room_id);
+              const room = roomUnits.find(r => r.id === b.room_id);
+              const category = roomTypes.find(r => r.id === room?.category_id);
               return (
                 <div key={b.id} className="flex items-center justify-between p-3 bg-red-50 border border-red-100 rounded-xl">
                   <div className="flex items-center gap-3">
                     <Lock size={14} className="text-red-400 shrink-0"/>
                     <div>
-                      <span className="text-[13px] font-medium text-slate-700">{room?.number ? `${room.type.mn} ${room.number}` : b.room_id}</span>
+                      <span className="text-[13px] font-medium text-slate-700">{category ? `${category.name.mn} ${room?.id}` : b.room_id}</span>
                       <span className="text-[12px] text-slate-400 ml-2">{b.from_date} → {b.to_date}</span>
                       {b.reason && <span className="text-[11px] text-red-400 ml-2">· {b.reason}</span>}
                     </div>
@@ -174,53 +264,40 @@ export default function RoomsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {roomInstances.map(room => (
+              {roomUnits.map(room => (
                 <tr key={room.id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="sticky left-0 bg-white px-4 py-3">
                     <div className="flex items-center gap-2">
                       <BedDouble size={15} className="text-slate-400"/>
                       <div>
-                        <div className="text-[12px] font-medium text-slate-700">{room.number}</div>
-                        <div className="text-[11px] text-slate-400">{room.type.mn} · {room.beds ?? "—"} {room.beds ? "ор" : ""}</div>
+                        <div className="text-[12px] font-medium text-slate-700">{room.id}</div>
+                        <div className="text-[11px] text-slate-400">{roomTypes.find(type => type.id === room.category_id)?.name.mn || room.category_id} · {room.capacity} ор</div>
                       </div>
                     </div>
                   </td>
                   {days.map(d => {
-                    const dayBookings = getBookingsForDay(room.id, d);
                     const block = getBlockForDay(room.id, d);
                     const isToday = d===today.getDate() && month===today.getMonth() && year===today.getFullYear();
-                    const totalGuests = dayBookings.reduce((sum, b) => sum + (b.guest_details?.length || 0), 0);
-                    const bedCapacity = room.beds || 1;
-                    const isFullyBooked = totalGuests >= bedCapacity;
-                    const booking = dayBookings[0]; // Show first booking for tooltip
-                    const guestDetails = booking?.guest_details || [];
-                    const genderTooltip = guestDetails.length > 0 ? guestDetails
-                      .map(guest => {
-                        const gender = guest.gender === "male" ? "M" : guest.gender === "female" ? "F" : guest.gender;
-                        return guest.age ? `${gender}(${guest.age})` : gender;
-                      }).join(", ") : "";
+                    const legacyHold = getLegacyHoldForDay(room, d);
                     return (
                       <td key={d} className={`px-1 py-2 text-center ${isToday?"bg-teal/5":""}`}>
-                        {block ? (
-                          <div title={block.reason} className="w-6 h-6 rounded-full mx-auto bg-red-400 flex items-center justify-center cursor-help">
-                            <Lock size={9} className="text-white"/>
-                          </div>
-                        ) : isFullyBooked ? (
-                          <div title={`Fully booked (${totalGuests}/${bedCapacity})${genderTooltip ? ` · ${genderTooltip}` : ""}`}
-                            className="w-6 h-6 rounded-full mx-auto bg-red-500 flex items-center justify-center cursor-help">
-                            <span className="text-white text-[8px] font-bold">F</span>
-                          </div>
-                        ) : booking ? (
-                          <div
-                            title={`${booking.fname} ${booking.lname} (${booking.ref})${genderTooltip ? ` · ${genderTooltip}` : ""}`}
-                            className={`w-6 h-6 rounded-full mx-auto flex items-center justify-center cursor-help ${booking.status==="confirmed"?"bg-emerald-500":"bg-amber-400"}`}>
-                            <span className="text-white text-[8px] font-bold">{booking.fname[0]}</span>
-                          </div>
-                        ) : (
-                          <div className="w-6 h-6 rounded-full mx-auto bg-slate-100 flex items-center justify-center">
-                            <CheckCircle size={10} className="text-slate-300"/>
-                          </div>
-                        )}
+                        <div className="mx-auto flex max-w-16 flex-wrap justify-center gap-0.5">
+                          {room.beds.map(bed => {
+                            const booking = getBedAssignmentForDay(room.id, bed.id, d);
+                            const state = block ? "closed" : legacyHold ? "allocation" : booking?.status || "available";
+                            const color = state === "closed" ? "bg-red-500"
+                              : state === "allocation" ? "bg-amber-500"
+                              : state === "checked_in" ? "bg-blue-600"
+                              : state === "confirmed" ? "bg-emerald-500"
+                              : state === "pending" ? "bg-amber-400" : "bg-slate-200";
+                            const assignment = booking?.bed_assignments?.find(row =>
+                              row.bed_id === bed.id && !row.released_at
+                            );
+                            const title = `${bed.id} · ${state === "allocation" ? "bed allocation required" : booking ? `${booking.fname} ${booking.lname} · ${booking.ref} · ${assignment?.guest_gender || "gender unknown"}` : block?.reason || "available"}`;
+                            return <span key={bed.id} title={title} className={`h-3 w-3 rounded-sm ${color}`} />;
+                          })}
+                          {room.beds.length === 0 && <span className="text-[9px] text-amber-700">No beds</span>}
+                        </div>
                       </td>
                     );
                   })}
@@ -252,7 +329,7 @@ export default function RoomsPage() {
                 <label className={lbl}>Өрөө сонгох</label>
                 <select value={blockForm.room_id} onChange={e => setBlockForm(f => ({...f, room_id: e.target.value}))} className={inp}>
                   <option value="">-- Өрөө сонгох --</option>
-                  {roomInstances.map(r => <option key={r.id} value={r.id}>{`${r.type.mn} ${r.number}`}</option>)}
+                  {roomUnits.map(r => <option key={r.id} value={r.id}>{`${roomTypes.find(type => type.id === r.category_id)?.name.mn || r.category_id} ${r.id}`}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">

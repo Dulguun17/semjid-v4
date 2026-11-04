@@ -1,27 +1,32 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Users, Check, ArrowRight } from "lucide-react";
 import { useLang } from "@/lib/lang-context";
-import { t, rooms as staticRooms, formatMNT } from "@/lib/data";
+import { t, formatMNT } from "@/lib/data";
 import { getDynamicRooms } from "@/lib/dynamic-data";
 import type { RoomItem } from "@/lib/data";
 import { ReviewsSection } from "@/components/ui/ReviewsSection";
 
 export function RoomsPageContent() {
   const { lang } = useLang();
-  const [rooms, setRooms] = useState<RoomItem[]>(staticRooms);
-  const [filteredRooms, setFilteredRooms] = useState<RoomItem[]>(staticRooms);
+  const [rooms, setRooms] = useState<RoomItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [priceFilter, setPriceFilter] = useState('');
   const [capacityFilter, setCapacityFilter] = useState('');
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    getDynamicRooms().then(setRooms);
+    getDynamicRooms()
+      .then(setRooms)
+      .catch(error => {
+        console.error("Failed to load room catalogue", error);
+        setLoadError("Өрөөний мэдээллийг одоогоор ачаалж чадсангүй.");
+      });
   }, []);
 
-  useEffect(() => {
+  const filteredRooms = useMemo(() => {
     let filtered = rooms;
 
     if (searchTerm) {
@@ -44,7 +49,7 @@ export function RoomsPageContent() {
       filtered = filtered.filter(room => room.capacity >= minCapacity);
     }
 
-    setFilteredRooms(filtered);
+    return filtered;
   }, [rooms, searchTerm, priceFilter, capacityFilter, lang]);
 
   return (
@@ -136,6 +141,7 @@ export function RoomsPageContent() {
         </div>
 
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-5">
+          {loadError && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{loadError}</p>}
           {filteredRooms.map(r => {
             const price = r.adult2 ?? r.adult1 ?? 0;
             return (

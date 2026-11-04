@@ -105,13 +105,22 @@ export function Navbar() {
             </Link>
           </div>
 
-          <button onClick={() => setOpen(!open)} className="md:hidden text-slate-600">
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            className="md:hidden text-slate-600"
+            aria-label={open
+              ? (lang === "mn" ? "Цэс хаах" : "Close navigation menu")
+              : (lang === "mn" ? "Цэс нээх" : "Open navigation menu")}
+            aria-expanded={open}
+            aria-controls="mobile-navigation"
+          >
             {open ? <X size={22}/> : <Menu size={22}/>}
           </button>
         </div>
 
         {open && (
-          <div className="md:hidden bg-white border-t border-slate-100 py-5 px-6 space-y-4">
+          <div id="mobile-navigation" className="md:hidden bg-white border-t border-slate-100 py-5 px-6 space-y-4">
             {links.map(l => (
               <Link key={l.href} href={l.href} onClick={() => setOpen(false)}
                 className="block text-[14px] text-slate-600 no-underline">{l.label[lang]}</Link>

@@ -1,12 +1,26 @@
 "use client";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Users, ArrowRight } from "lucide-react";
 import { useLang } from "@/lib/lang-context";
-import { t, rooms, formatMNT } from "@/lib/data";
+import { t, formatMNT, type RoomItem } from "@/lib/data";
+import { getDynamicRooms } from "@/lib/dynamic-data";
 
 export function RoomsSection() {
   const { lang } = useLang();
+  const [rooms, setRooms] = useState<RoomItem[]>([]);
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    getDynamicRooms()
+      .then(setRooms)
+      .catch(error => {
+        console.error("Failed to load room catalogue", error);
+        setLoadError(true);
+      });
+  }, []);
+
   return (
     <section className="bg-white py-20 px-6 lg:px-10">
       <div className="max-w-7xl mx-auto">
@@ -19,6 +33,7 @@ export function RoomsSection() {
           <Link href="/rooms" className="text-[13px] text-teal hover:text-teal-dark no-underline flex items-center gap-1 shrink-0">{t.rooms.viewAll[lang]}</Link>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {loadError && <p role="status" className="text-sm text-slate-500">Өрөөний үнийн мэдээллийг одоогоор ачаалж чадсангүй.</p>}
           {rooms.slice(0,3).map(r => {
             const price = r.adult2 ?? r.adult1 ?? 0;
             return (

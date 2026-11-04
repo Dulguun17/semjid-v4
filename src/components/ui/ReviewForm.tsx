@@ -1,6 +1,5 @@
 "use client";
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
 import { Star, Send } from 'lucide-react';
 
 export function ReviewForm({ roomId }: { roomId?: string }) {

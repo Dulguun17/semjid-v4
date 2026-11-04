@@ -1,11 +1,15 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/lib/supabase";
+import { useState, useEffect } from "react";
+import { workspaceAuthorizationHeaders } from "@/lib/workspace-api";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type Booking = {
   id: string; ref: string; fname: string; lname: string;
   check_in: string; check_out: string; room_id: string; status: string;
+  bed_allocation_required: boolean;
+  actual_check_in_at: string | null;
+  actual_check_out_at: string | null;
+  bed_assignments: { bed_id: string; guest_gender: string; released_at: string | null }[];
 };
 
 const DAYS = ["Да","Мя","Лх","Пү","Ба","Бя","Ня"];
@@ -16,12 +20,21 @@ export default function CalendarPage() {
   const [date, setDate] = useState(new Date());
   const [selected, setSelected] = useState<Booking[]>([]);
 
-  const load = useCallback(async () => {
-    const { data } = await supabase.from("bookings").select("*").order("check_in");
-    setBookings(data || []);
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const headers = await workspaceAuthorizationHeaders();
+        const response = await fetch("/api/staff/bookings", { headers });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Захиалгын календар ачаалж чадсангүй.");
+        if (active) setBookings(data.bookings || []);
+      } catch (error) {
+        console.error("Failed to load booking calendar", error);
+      }
+    })();
+    return () => { active = false; };
   }, []);
-
-  useEffect(() => { load(); }, [load]);
 
   const year = date.getFullYear();
   const month = date.getMonth();
@@ -31,7 +44,11 @@ export default function CalendarPage() {
 
   const getBookingsForDay = (day: number) => {
     const d = `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-    return bookings.filter(b => b.check_in <= d && b.check_out > d);
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ulaanbaatar" }).format(new Date());
+    return bookings.filter(b =>
+      (b.check_in <= d && b.check_out > d) ||
+      (b.status === "checked_in" && !!b.actual_check_in_at && !b.actual_check_out_at && d >= today)
+    );
   };
 
   const statusColor = (s: string) =>
@@ -82,7 +99,7 @@ export default function CalendarPage() {
                 <div className="space-y-0.5">
                   {dayBookings.slice(0,3).map(b => (
                     <div key={b.id} className={`${statusColor(b.status)} text-white text-[10px] px-1.5 py-0.5 rounded truncate`}>
-                      {b.fname} {b.lname[0]}.
+                      {b.room_id} · {b.bed_allocation_required ? "ор хуваарилаагүй" : (b.bed_assignments || []).filter(assignment => !assignment.released_at).map(assignment => assignment.bed_id).join(", ")}
                     </div>
                   ))}
                   {dayBookings.length > 3 && (
@@ -115,6 +132,9 @@ export default function CalendarPage() {
                 <div>
                   <div className="text-[13px] font-medium text-slate-800">{b.fname} {b.lname}</div>
                   <div className="text-[11px] text-slate-400 mt-0.5">{b.ref} · {b.room_id} · {b.check_in} → {b.check_out}</div>
+                  <div className="text-[11px] text-slate-500">{b.bed_allocation_required ? "Орыг ажилтан хуваарилах шаардлагатай" : (b.bed_assignments || []).filter(assignment => !assignment.released_at).map(assignment => `${assignment.bed_id} (${assignment.guest_gender})`).join(", ")}</div>
+                  {b.actual_check_in_at && <div className="text-[11px] text-slate-500">Бодит ирэлт: {new Date(b.actual_check_in_at).toLocaleString("mn-MN", { timeZone: "Asia/Ulaanbaatar" })}</div>}
+                  {b.actual_check_out_at && <div className="text-[11px] text-slate-500">Бодит гаралт: {new Date(b.actual_check_out_at).toLocaleString("mn-MN", { timeZone: "Asia/Ulaanbaatar" })}</div>}
                 </div>
                 <span className={`text-[11px] px-3 py-1 rounded-full font-medium text-white ${statusColor(b.status)}`}>
                   {b.status === "confirmed" ? "Баталгаажсан" : b.status === "cancelled" ? "Цуцлагдсан" : "Хүлээгдэж буй"}

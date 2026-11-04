@@ -1,10 +1,11 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
+import { workspaceAuthorizationHeaders } from "@/lib/workspace-api";
 import {
-  Save, Upload, Loader2, FileText, Image as ImageIcon,
-  Globe, Edit3, Check, X,
+  Save, Upload, Loader2, FileText,
 } from "lucide-react";
+import Image from "next/image";
 
 type ContentItem = {
   id: string;
@@ -173,7 +174,8 @@ export default function ContentManagement() {
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const headers = await workspaceAuthorizationHeaders();
+      const res = await fetch('/api/upload', { method: 'POST', headers, body: fd });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       await saveContent(section, key, lang, data.url, true);
@@ -256,7 +258,7 @@ export default function ContentManagement() {
                         <div className="space-y-3">
                           {value && field.type === 'image' ? (
                             <div className="w-32 h-24 rounded-lg overflow-hidden bg-slate-100 relative">
-                              <img src={value} alt="" className="w-full h-full object-cover"/>
+                              <Image src={value} alt="" fill sizes="128px" unoptimized className="object-cover"/>
                             </div>
                           ) : value ? (
                             <a

@@ -1,7 +1,7 @@
 # 🎯 Quick Start — Go Live in 30 Minutes
 
 ## ✅ Already Done
-- ✓ Bank account updated: **08 0005 00 5557333756**
+- Payment-account details are managed outside this repository.
 - ✓ `.env.local` configured with Supabase keys
 - ✓ Production build passing
 - ✓ Deployment guides created
@@ -91,7 +91,7 @@
 | Item | Value |
 |------|-------|
 | **Admin Email** | otgonbatzolboo@gmail.com |
-| **Bank Account** | 08 0005 00 5557333756 |
+| **Bank Account** | Managed securely outside this repository |
 | **Bank** | Khan Bank (Хаан Банк) |
 | **Supabase Project** | qgutrcekzdaicxhjtrcx |
 | **Vercel Hosting** | FREE |

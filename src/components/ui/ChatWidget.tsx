@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { MessageSquare, X, Send, Loader2 } from "lucide-react";
 import { useLang } from "@/lib/lang-context";
 
@@ -8,8 +8,8 @@ type Message = { id?: string; sender: string; message: string; created_at?: stri
 function getSessionId() {
   if (typeof window === "undefined") return "";
   let id = localStorage.getItem("chat_session");
-  if (!id) {
-    id = `session_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  if (!id || !/^chat_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+    id = `chat_${crypto.randomUUID()}`;
     localStorage.setItem("chat_session", id);
   }
   return id;
@@ -31,6 +31,19 @@ export function ChatWidget() {
   const [sessionId] = useState(getSessionId);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  const loadMessages = useCallback(async () => {
+    try {
+      const res = await fetch("/api/chat", {
+        headers: { "x-chat-session": sessionId },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load chat messages.");
+      setMessages(data.messages || []);
+    } catch (error) {
+      console.error("Failed to load chat messages", error);
+    }
+  }, [sessionId]);
+
   const labels = {
     title:       { mn: "Холбоо барих", en: "Live Chat" },
     subtitle:    { mn: "Сувилалын ажилтан", en: "Resort Staff" },
@@ -51,19 +64,11 @@ export function ChatWidget() {
     loadMessages();
     const interval = setInterval(loadMessages, 4000);
     return () => clearInterval(interval);
-  }, [open, nameSet]);
+  }, [open, nameSet, loadMessages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  const loadMessages = async () => {
-    try {
-      const res = await fetch(`/api/chat?sessionId=${sessionId}`);
-      const data = await res.json();
-      setMessages(data.messages || []);
-    } catch {}
-  };
 
   const handleSetName = () => {
     if (!name.trim()) return;
@@ -80,7 +85,7 @@ export function ChatWidget() {
     try {
       await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-chat-session": sessionId },
         body: JSON.stringify({ message: msg, sessionId, senderName: name }),
       });
       loadMessages();

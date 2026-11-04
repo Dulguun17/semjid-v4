@@ -223,7 +223,7 @@ WEBSITE LIVE! 🎉
 - [x] Website code ready & tested
 - [x] Production build passing (npm run build)
 - [x] `.env.local` configured
-- [x] Bank account updated (08 0005 00 5557333756)
+- Payment-account details are managed outside this repository.
 - [x] All deployment guides written
 - [x] This decision tree created
 - ⏳ Your next action (pick a guide above)

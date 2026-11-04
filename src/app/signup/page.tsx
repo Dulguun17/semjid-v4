@@ -1,14 +1,12 @@
 "use client";
 import { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { supabase } from "@/lib/supabase";
 import { useLang } from "@/lib/lang-context";
 import { Eye, EyeOff, ArrowLeft, CheckCircle } from "lucide-react";
 
 function SignupContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/profile";
   const { lang } = useLang();
@@ -78,7 +76,7 @@ function SignupContent() {
       } else {
         setSuccess(true);
       }
-    } catch (err) {
+    } catch {
       setError(lang === "mn" ? "Бүртгэл амжилтгүй боллоо." : "Registration failed.");
     } finally {
       setLoading(false);

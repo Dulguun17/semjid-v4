@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
+import { workspaceAuthorizationHeaders } from "@/lib/workspace-api";
 import { Send, MessageSquare, RefreshCw } from "lucide-react";
 
 type Message = { id: string; session_id: string; sender: string; sender_name: string; message: string; created_at: string; };
@@ -12,6 +13,7 @@ export default function AdminChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const loadSessions = useCallback(async () => {
@@ -55,14 +57,26 @@ export default function AdminChatPage() {
   const sendReply = async () => {
     if (!reply.trim() || !activeSession || sending) return;
     setSending(true);
-    await fetch("/api/chat/reply", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: reply.trim(), sessionId: activeSession }),
-    });
-    setReply("");
-    await loadMessages(activeSession);
-    setSending(false);
+    setSendError("");
+    try {
+      const headers = await workspaceAuthorizationHeaders();
+      const response = await fetch("/api/chat/reply", {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ message: reply.trim(), sessionId: activeSession }),
+      });
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || "Failed to send message.");
+      }
+      setReply("");
+      await loadMessages(activeSession);
+    } catch (error) {
+      console.error("Failed to send chat reply", error);
+      setSendError(error instanceof Error ? error.message : "Мессеж илгээж чадсангүй.");
+    } finally {
+      setSending(false);
+    }
   };
 
   const activeSessionData = sessions.find(s => s.session_id === activeSession);
@@ -171,6 +185,7 @@ export default function AdminChatPage() {
                       {sending?"...":"Илгээх"}
                     </button>
                   </div>
+                  {sendError && <p role="alert" className="mt-2 text-xs text-red-600">{sendError}</p>}
                   <p className="text-[11px] text-slate-400 mt-2">Зочин 4 секунд тутамд шинэ мессеж авна</p>
                 </div>
               </>

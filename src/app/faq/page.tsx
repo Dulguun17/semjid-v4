@@ -52,7 +52,7 @@ export default function FAQPage() {
 
         <div className="pt-8 border-t border-slate-200">
           <p className="text-slate-600 mb-4">
-            Can't find what you're looking for? Contact us directly.
+            Can&apos;t find what you&apos;re looking for? Contact us directly.
           </p>
           <Link href="/contact" className="text-teal hover:text-teal-dark text-sm font-medium">
             Contact Us →

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
+import { workspaceAuthorizationHeaders } from "@/lib/workspace-api";
 import { Upload, Loader2, Check, X, FileText, Download } from "lucide-react";
 
 type Settings = {
@@ -13,6 +14,8 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [expiryMinutes, setExpiryMinutes] = useState("");
+  const [savingExpiry, setSavingExpiry] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Load settings
@@ -32,10 +35,20 @@ export default function SettingsPage() {
           .upsert({ id: "main", referral_letter_url: null, updated_at: new Date().toISOString() }, { onConflict: "id" })
           .select()
           .single();
-        setSettings(newSettings || { id: "main", referral_letter_url: null, updated_at: new Date().toISOString() });
+        if (insertError) throw insertError;
+        if (!newSettings) throw new Error("Тохиргооны мэдээлэл үүссэнгүй.");
+        setSettings(newSettings);
       } else if (data) {
         setSettings(data);
       }
+
+      const { data: bookingConfig, error: configError } = await supabase
+        .from("booking_config")
+        .select("pending_expiry_minutes")
+        .eq("id", true)
+        .single();
+      if (configError) throw configError;
+      setExpiryMinutes(String(bookingConfig.pending_expiry_minutes));
     } catch (err) {
       console.error("Failed to load settings:", err);
       setMessage({ type: "error", text: "Тохиргоо ачаалах үед алдаа гарлаа" });
@@ -43,6 +56,33 @@ export default function SettingsPage() {
       setLoading(false);
     }
   }, []);
+
+  const saveExpiry = async () => {
+    const minutes = Number(expiryMinutes);
+    if (!Number.isInteger(minutes) || minutes < 5 || minutes > 43200) {
+      setMessage({ type: "error", text: "Хүлээгдэж буй захиалгын хугацаа 5–43200 минутын хооронд бүхэл тоо байх ёстой." });
+      return;
+    }
+
+    setSavingExpiry(true);
+    setMessage(null);
+    try {
+      const { error } = await supabase
+        .from("booking_config")
+        .update({ pending_expiry_minutes: minutes })
+        .eq("id", true);
+      if (error) throw error;
+      setMessage({ type: "success", text: "Хүлээгдэж буй захиалгын хугацаа шинэчлэгдлээ." });
+    } catch (saveError) {
+      console.error("Failed to update pending reservation expiry", saveError);
+      setMessage({
+        type: "error",
+        text: saveError instanceof Error ? saveError.message : "Хүлээгдэж буй захиалгын хугацааг хадгалж чадсангүй.",
+      });
+    } finally {
+      setSavingExpiry(false);
+    }
+  };
 
   useEffect(() => {
     loadSettings();
@@ -65,8 +105,10 @@ export default function SettingsPage() {
       const formData = new FormData();
       formData.append("file", file);
 
+      const headers = await workspaceAuthorizationHeaders();
       const response = await fetch("/api/upload", {
         method: "POST",
+        headers,
         body: formData,
       });
 
@@ -246,6 +288,38 @@ export default function SettingsPage() {
           </p>
         </div>
       </div>
+
+      <section className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+        <h2 className="font-semibold text-slate-800">Хүлээгдэж буй захиалгын хугацаа</h2>
+        <p className="mt-1 text-[13px] text-slate-500">
+          Хугацаа дуусахад баталгаажаагүй захиалга автоматаар цуцлагдаж, өрөөний багтаамжийг чөлөөлнө.
+        </p>
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <label className="text-xs text-slate-600">
+            Минут (5–43200)
+            <input
+              type="number"
+              min={5}
+              max={43200}
+              step={1}
+              value={expiryMinutes}
+              onChange={event => setExpiryMinutes(event.target.value)}
+              className="mt-1 block w-40 rounded-lg border border-slate-200 px-3 py-2.5 text-sm"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={saveExpiry}
+            disabled={savingExpiry || !expiryMinutes}
+            className="rounded-lg bg-teal px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-dark disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {savingExpiry ? "Хадгалж байна…" : "Хугацаа хадгалах"}
+          </button>
+        </div>
+        <p className="mt-3 text-xs text-slate-500">
+          Expiry ажилтан өрөө/захиалга ачаалах эсвэл шинэ захиалга хийхэд шалгагдана. Автоматаар тасралтгүй ажиллуулах бол Supabase Cron тохируулна.
+        </p>
+      </section>
 
       {/* Additional Settings Sections */}
       <div className="bg-slate-50 border border-slate-300 rounded-xl p-4">

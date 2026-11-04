@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { formatMNT, rooms, services } from "@/lib/data";
+import { workspaceAuthorizationHeaders } from "@/lib/workspace-api";
 import { Search, Download, Check, X, ChevronDown, ChevronUp, Filter, FileText, ExternalLink, User, Phone, Mail, Calendar, BedDouble, Stethoscope, CreditCard, StickyNote } from "lucide-react";
 
 type Booking = {
@@ -9,6 +10,7 @@ type Booking = {
   email: string; check_in: string; check_out: string; room_id: string;
   treatments: string[]; guests: number; notes: string; payment: string;
   total: number; status: string; created_at: string;
+  customer_user_id: string | null;
   ilgeeh_bichig_url: string | null;
 };
 
@@ -18,23 +20,102 @@ export default function GuestsPage() {
   const [filter, setFilter] = useState<"all"|"pending"|"confirmed"|"cancelled">("all");
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string|null>(null);
+  const [actionError, setActionError] = useState("");
+  const [isManager, setIsManager] = useState(false);
+  const [linkingBookingId, setLinkingBookingId] = useState<string | null>(null);
+  const [customerUserId, setCustomerUserId] = useState("");
+  const [identityVerified, setIdentityVerified] = useState(false);
+  const [linkReason, setLinkReason] = useState("");
+  const [linkError, setLinkError] = useState("");
+  const [linkSuccess, setLinkSuccess] = useState("");
+  const [linkSaving, setLinkSaving] = useState(false);
 
-  const load = useCallback(async () => {
-    const { data } = await supabase.from("bookings").select("*").order("created_at", { ascending: false });
-    setBookings(data || []);
-    setLoading(false);
+  const fetchBookings = useCallback(async () => {
+    const { data, error } = await supabase.from("bookings").select("*").order("created_at", { ascending: false });
+    if (error) throw error;
+    return data || [];
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  const load = useCallback(async () => {
+    try {
+      setBookings(await fetchBookings());
+    } catch {
+      console.error("Failed to load bookings");
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchBookings]);
+
+  useEffect(() => {
+    let active = true;
+    supabase.rpc("is_workspace_manager")
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) {
+          console.error("Could not verify manager tools", { code: error.code });
+          return;
+        }
+        setIsManager(data === true);
+      });
+    fetchBookings()
+      .then(data => { if (active) setBookings(data); })
+      .catch(error => {
+        if (active) console.error("Failed to load bookings", { code: error?.code });
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [fetchBookings]);
 
   const updateStatus = async (id: string, status: string) => {
-    await supabase.from("bookings").update({ status }).eq("id", id);
-    load();
+    setActionError("");
+    try {
+      const headers = { ...(await workspaceAuthorizationHeaders()), "Content-Type": "application/json" };
+      const response = await fetch("/api/staff/bookings", {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ id, status }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Захиалгын төлөв өөрчилж чадсангүй.");
+      await load();
+    } catch (error) {
+      console.error("Failed to update booking status");
+      setActionError(error instanceof Error ? error.message : "Захиалгын төлөв өөрчилж чадсангүй.");
+    }
+  };
+
+  const linkBookingToCustomer = async (bookingId: string) => {
+    setLinkError("");
+    setLinkSuccess("");
+    setLinkSaving(true);
+    try {
+      const response = await fetch("/api/staff/bookings/link-customer", {
+        method: "POST",
+        headers: { ...(await workspaceAuthorizationHeaders()), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookingId,
+          customerUserId: customerUserId.trim(),
+          identityVerified,
+          reason: linkReason.trim(),
+        }),
+      });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error || "Данс холбож чадсангүй.");
+      setLinkSuccess("Захиалга бүртгэлтэй холбогдлоо. Өөрчлөлт аудитын бүртгэлд хадгалагдсан.");
+      setCustomerUserId("");
+      setIdentityVerified(false);
+      setLinkReason("");
+      await load();
+    } catch (error) {
+      setLinkError(error instanceof Error ? error.message : "Данс холбож чадсангүй.");
+    } finally {
+      setLinkSaving(false);
+    }
   };
 
   const exportCSV = () => {
     const rows = [
-      ["Дугаар","Нэр","Овог","Утас","И-мэйл","Өрөө","Ирэх","Явах","Хүн","Эмчилгээ","Нийт дүн","Төлбөр","Статус","Илгээх бичиг","Огноо"],
+      ["Дугаар","Нэр","Овог","Утас","И-мэйл","Өрөө","Ирэх","Явах","Хүн","Эмчилгээ","Захиалгад бичсэн дүн (хүлээн авсан төлбөр биш)","Сонгосон төлбөрийн хэлбэр","Статус","Илгээх бичиг","Огноо"],
       ...filtered.map(b => [b.ref,b.fname,b.lname,b.phone,b.email||"",b.room_id,b.check_in,b.check_out,b.guests,(b.treatments||[]).join("|"),b.total,b.payment,b.status,b.ilgeeh_bichig_url||"",b.created_at]),
     ];
     const csv = rows.map(r => r.join(",")).join("\n");
@@ -74,6 +155,10 @@ export default function GuestsPage() {
           <Download size={15}/> Excel татах
         </button>
       </div>
+      <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        Захиалгын дүн болон сонгосон хэлбэр нь мөнгө хүлээн авсны баталгаа биш.
+      </div>
+      {actionError && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{actionError}</p>}
 
       {/* Search & Filter */}
       <div className="flex flex-col sm:flex-row gap-3">
@@ -185,7 +270,7 @@ export default function GuestsPage() {
                       <h3 className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-3 flex items-center gap-1.5"><CreditCard size={12}/>Төлбөр</h3>
                       <div className="space-y-2.5">
                         <div className="flex justify-between"><span className="text-[12px] text-slate-400">Төлбөрийн арга</span><span className="text-[13px] font-medium text-slate-700">{payLabel(b.payment)}</span></div>
-                        <div className="flex justify-between"><span className="text-[12px] text-slate-400">Нийт дүн</span><span className="text-[14px] font-bold text-teal">{formatMNT(b.total||0)}</span></div>
+                        <div className="flex justify-between"><span className="text-[12px] text-slate-400">Захиалгад бичсэн дүн</span><span className="text-[14px] font-bold text-teal">{formatMNT(b.total||0)}</span></div>
                         <div className="flex justify-between"><span className="text-[12px] text-slate-400">Статус</span><span className={`text-[12px] px-2.5 py-0.5 rounded-full font-medium ${statusBadge(b.status)}`}>{statusLabel(b.status)}</span></div>
                       </div>
                     </div>
@@ -252,6 +337,90 @@ export default function GuestsPage() {
                       <Phone size={13}/> {b.phone} руу залгах
                     </a>
                   </div>
+                  {isManager && (
+                    <div className="mx-5 mb-5 rounded-xl border border-slate-200 bg-white p-4">
+                      <p className="text-sm font-semibold text-slate-800">
+                        {b.customer_user_id ? "Захиалга хэрэглэгчийн бүртгэлтэй холбогдсон" : "Хэрэглэгчийн бүртгэлд холбох"}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Үйлчлүүлэгчийг нэвтрүүлж, итгэмжлэгдсэн захиалгын баримтаар биечлэн баталгаажуулсны дараа л холбоно уу. Нэр, утас, и-мэйлээр тааруулж болохгүй. Шалтгаанд нууц мэдээлэл бүү оруул.
+                      </p>
+                      {linkError && linkingBookingId === b.id && <p role="alert" className="mt-3 text-sm text-red-700">{linkError}</p>}
+                      {linkSuccess && linkingBookingId === b.id && <p role="status" className="mt-3 text-sm text-emerald-700">{linkSuccess}</p>}
+                      {linkingBookingId === b.id ? (
+                        <form
+                          className="mt-4 space-y-3"
+                          onSubmit={event => {
+                            event.preventDefault();
+                            void linkBookingToCustomer(b.id);
+                          }}
+                        >
+                          <label className="block text-xs font-medium text-slate-600">
+                            Supabase хэрэглэгчийн UUID
+                            <input
+                              required
+                              minLength={36}
+                              maxLength={36}
+                              value={customerUserId}
+                              onChange={event => setCustomerUserId(event.target.value)}
+                              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 font-mono"
+                              placeholder="00000000-0000-0000-0000-000000000000"
+                            />
+                          </label>
+                          <label className="block text-xs font-medium text-slate-600">
+                            Баталгаажуулалтын товч шалтгаан (8–500 тэмдэгт, нууц мэдээлэлгүй)
+                            <textarea
+                              required
+                              minLength={8}
+                              maxLength={500}
+                              value={linkReason}
+                              onChange={event => setLinkReason(event.target.value)}
+                              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
+                              rows={2}
+                            />
+                          </label>
+                          <label className="flex items-start gap-2 text-xs text-slate-700">
+                            <input
+                              type="checkbox"
+                              required
+                              checked={identityVerified}
+                              onChange={event => setIdentityVerified(event.target.checked)}
+                              className="mt-0.5"
+                            />
+                            Би үйлчлүүлэгчийн бүртгэл болон захиалгын эзэмшлийг итгэмжлэгдсэн баримтаар баталгаажуулсан.
+                          </label>
+                          <div className="flex gap-2">
+                            <button
+                              type="submit"
+                              disabled={linkSaving}
+                              className="rounded-lg bg-teal px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                            >
+                              {linkSaving ? "…" : "Аудиттай холбох"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setLinkingBookingId(null); setLinkError(""); }}
+                              className="rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600"
+                            >
+                              Болих
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLinkingBookingId(b.id);
+                            setLinkError("");
+                            setLinkSuccess("");
+                          }}
+                          className="mt-3 rounded-lg border border-teal px-3 py-2 text-xs font-semibold text-teal"
+                        >
+                          {b.customer_user_id ? "Өөр бүртгэлд холбох" : "Баталгаажуулаад холбох"}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

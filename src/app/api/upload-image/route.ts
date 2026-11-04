@@ -1,9 +1,11 @@
-import { getSupabaseAdmin } from "@/lib/supabase";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { NextRequest, NextResponse } from "next/server";
-
-const supabase = getSupabaseAdmin();
+import { requireWorkspaceAccess } from "@/lib/workspace-auth";
 
 export async function POST(req: NextRequest) {
+  const access = await requireWorkspaceAccess(req, { roles: ["staff"], managerOnly: true });
+  if (!access.allowed) return access.response;
+
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File;
@@ -13,6 +15,7 @@ export async function POST(req: NextRequest) {
     const path = `rooms/${Date.now()}.${ext}`;
     const buffer = Buffer.from(await file.arrayBuffer());
 
+    const supabase = getSupabaseAdmin();
     const { error } = await supabase.storage
       .from("resort-images")
       .upload(path, buffer, { contentType: file.type, upsert: true });
