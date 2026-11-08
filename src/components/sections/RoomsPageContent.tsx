@@ -39,8 +39,8 @@ export function RoomsPageContent() {
     if (priceFilter) {
       const maxPrice = parseInt(priceFilter);
       filtered = filtered.filter(room => {
-        const price = room.adult2 ?? room.adult1 ?? 0;
-        return price <= maxPrice;
+        const price = room.adult1 ?? room.adult2 ?? null;
+        return price !== null && price <= maxPrice;
       });
     }
 
@@ -104,33 +104,33 @@ export function RoomsPageContent() {
       <section className="pb-14 px-6 lg:px-10">
         <div className="max-w-7xl mx-auto mb-8">
           <div className="bg-white rounded-lg p-6 shadow-sm">
-            <h3 className="text-lg font-semibold mb-4">Search & Filter Rooms</h3>
+            <h2 className="text-lg font-semibold mb-4">{lang === "mn" ? "Өрөө хайх, шүүх" : "Search & filter rooms"}</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Search</label>
+                <label htmlFor="room-search" className="block text-sm font-medium mb-1">{lang === "mn" ? "Өрөө хайх" : "Search rooms"}</label>
                 <input
-                  type="text"
-                  placeholder="Search rooms..."
+                  id="room-search" type="text"
+                  placeholder={lang === "mn" ? "Өрөөний нэр" : "Room name"}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full p-2 border rounded"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Max Price (₮)</label>
+                <label htmlFor="room-price" className="block text-sm font-medium mb-1">{lang === "mn" ? "1 насанд хүрэгчийн шөнийн дээд үнэ (₮)" : "Max adult nightly rate (₮)"}</label>
                 <input
-                  type="number"
-                  placeholder="e.g. 500000"
+                  id="room-price" type="number" min="0"
+                  placeholder={lang === "mn" ? "Жишээ нь 100000" : "e.g. 100000"}
                   value={priceFilter}
                   onChange={(e) => setPriceFilter(e.target.value)}
                   className="w-full p-2 border rounded"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Min Capacity</label>
+                <label htmlFor="room-capacity" className="block text-sm font-medium mb-1">{lang === "mn" ? "Хамгийн бага багтаамж" : "Minimum capacity"}</label>
                 <input
-                  type="number"
-                  placeholder="e.g. 2"
+                  id="room-capacity" type="number" min="1"
+                  placeholder={lang === "mn" ? "Жишээ нь 2" : "e.g. 2"}
                   value={capacityFilter}
                   onChange={(e) => setCapacityFilter(e.target.value)}
                   className="w-full p-2 border rounded"
@@ -141,29 +141,30 @@ export function RoomsPageContent() {
         </div>
 
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-5">
-          {loadError && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{loadError}</p>}
+          {loadError && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{lang === "mn" ? loadError : "Room information could not be loaded right now."}</p>}
           {filteredRooms.map(r => {
-            const price = r.adult2 ?? r.adult1 ?? 0;
+            const price = r.adult1 ?? r.adult2 ?? null;
             return (
               <div key={r.id} className="bg-white rounded-xl overflow-hidden border border-slate-100 hover:shadow-lg hover:border-teal/20 transition-all group">
                 <div className="relative h-52 overflow-hidden">
                   <Image src={r.img} alt={r.name[lang]} fill className="object-cover group-hover:scale-105 transition-transform duration-500"/>
                   <div className="absolute top-3 left-3 bg-teal text-white text-[10px] px-2.5 py-1 rounded-full">{r.type[lang]}</div>
-                  <div className="absolute top-3 right-3 bg-gold text-white text-[11px] font-semibold px-2.5 py-1 rounded-full">{formatMNT(price)}{t.rooms.night[lang]}</div>
+                  <div className="absolute top-3 right-3 bg-gold text-white text-[11px] font-semibold px-2.5 py-1 rounded-full">{price === null ? (lang === "mn" ? "Үнэ тодруулах" : "Ask for rate") : formatMNT(price)}<span className="block">{lang === "mn" ? "1 насанд хүрэгч / шөнө" : "per adult / night"}</span></div>
                 </div>
                 <div className="p-5">
                   <div className="flex justify-between items-start gap-4 mb-2">
                     <h3 className="font-serif text-[19px] text-slate-800">{r.name[lang]}</h3>
                     <div className="flex items-center gap-1 text-slate-400 shrink-0 mt-1"><Users size={13}/><span className="text-[12px]">{r.capacity} {t.rooms.guests[lang]}</span></div>
                   </div>
-                  <p className="text-[13px] text-slate-400 leading-relaxed mb-4">{r.desc[lang]}</p>
+                  <p className="text-sm text-slate-600 leading-relaxed mb-4">{r.desc[lang]}</p>
                   <div className="grid grid-cols-2 gap-2 mb-4">
                     {r.amenities.map(a => (
-                      <div key={a.en} className="flex items-center gap-2"><Check size={12} className="text-teal shrink-0"/><span className="text-[12px] text-slate-500">{a[lang]}</span></div>
+                      <div key={a.en} className="flex items-center gap-2"><Check size={12} className="text-teal shrink-0"/><span className="text-sm text-slate-600">{a[lang]}</span></div>
                     ))}
                   </div>
+                  <p className="mb-4 text-sm leading-6 text-slate-600">{lang === "mn" ? "Байрлах хугацаа, нийт үнийг огноо сонгож шалгана. Хоол, багцад багтах зүйлийг хүлээн авалтаас тодруулна. Эмчилгээ нь эмчийн зөвлөгөөнөөс хамаарна." : "Choose dates to review stay length and total. Confirm meals and package inclusions with reception. Treatments depend on a clinical consultation."}</p>
                   <Link href="/booking" className="inline-flex items-center gap-2 text-[12px] font-medium text-white bg-teal hover:bg-teal-dark px-5 py-2.5 rounded-lg no-underline transition-colors">
-                    {t.rooms.book[lang]} <ArrowRight size={12}/>
+                    {lang === "mn" ? "Огноо, нийт үнэ шалгах" : "Check dates & total"} <ArrowRight size={12}/>
                   </Link>
                 </div>
               </div>

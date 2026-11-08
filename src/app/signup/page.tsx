@@ -5,10 +5,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { useLang } from "@/lib/lang-context";
 import { Eye, EyeOff, ArrowLeft, CheckCircle } from "lucide-react";
+import { safeInternalRedirect } from "@/lib/auth-navigation";
 
 function SignupContent() {
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirect") || "/profile";
+  const redirectTo = safeInternalRedirect(searchParams.get("redirect"));
   const { lang } = useLang();
   const [form, setForm] = useState({
     email: "",
@@ -23,6 +24,7 @@ function SignupContent() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [confirmationRequired, setConfirmationRequired] = useState(true);
 
   const handleChange = (field: string, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -74,6 +76,7 @@ function SignupContent() {
       if (!response.ok) {
         setError(responseData.error || (lang === "mn" ? "Бүртгэл амжилтгүй боллоо." : "Registration failed."));
       } else {
+        setConfirmationRequired(responseData.confirmationRequired !== false);
         setSuccess(true);
       }
     } catch {
@@ -95,13 +98,13 @@ function SignupContent() {
               {lang === "mn" ? "Бүртгэл амжилттай!" : "Registration Successful!"}
             </h2>
             <p className="text-[14px] text-slate-500 mb-6">
-              {lang === "mn"
+              {confirmationRequired ? (lang === "mn"
                 ? "И-мэйл хаягаа шалгаж бүртгэлийг баталгаажуулна уу."
-                : "Please check your email to confirm your registration."
-              }
+                : "Please check your email to confirm your registration.")
+                : (lang === "mn" ? "Бүртгэл үүслээ. Нэвтэрч үргэлжлүүлнэ үү." : "Your account is ready. Sign in to continue.")}
             </p>
             <Link
-              href={`/login${redirectTo !== "/profile" ? `?redirect=${redirectTo}` : ""}`}
+              href={`/login${redirectTo !== "/profile" ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`}
               className="inline-flex items-center gap-2 text-[13px] text-teal hover:text-teal-dark transition-colors"
             >
               {lang === "mn" ? "Нэвтрэх" : "Sign In"}
@@ -212,6 +215,7 @@ function SignupContent() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
+                aria-label={lang === "mn" ? "Нууц үгийн харагдацыг өөрчлөх" : "Toggle password visibility"}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               >
                 {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -235,6 +239,7 @@ function SignupContent() {
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                aria-label={lang === "mn" ? "Давтан нууц үгийн харагдацыг өөрчлөх" : "Toggle confirmation password visibility"}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               >
                 {showConfirmPassword ? <EyeOff size={14} /> : <Eye size={14} />}

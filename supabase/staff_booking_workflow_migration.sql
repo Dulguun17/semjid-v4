@@ -1304,6 +1304,7 @@ begin
       order by a.assigned_at desc limit 1
     ) selected_assignment on true
     where rb.room_id = u.id
+    group by room_allocation.allocation_required, room_gender.gender_conflict, room_gender.genders
   ) bed_rows
   where u.active;
   return v_result;

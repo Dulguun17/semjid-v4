@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarDays, Loader2, Plus, Search, Users } from "lucide-react";
+import Link from "next/link";
 import { formatMNT } from "@/lib/data";
 import { addUtcDays, BOOKING_STAY_NIGHTS, validateBookingDates } from "@/lib/booking-rules";
 import { hasSameGenderSharingConflict, ulaanbaatarToday } from "@/lib/bed-availability";
@@ -113,6 +114,7 @@ export default function BookingsManagementPage() {
   const [policy, setPolicy] = useState<BookingPolicy | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savedBooking, setSavedBooking] = useState<{ id: string; ref: string; room: string; beds: string[] } | null>(null);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | BookingStatus>("all");
@@ -398,6 +400,14 @@ export default function BookingsManagementPage() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Захиалгыг хадгалж чадсангүй.");
+      if (!editing && result.booking?.id) {
+        setSavedBooking({
+          id: result.booking.id,
+          ref: result.booking.ref,
+          room: result.booking.room_id,
+          beds: form.bed_assignments.map(assignment => assignment.bed_id).filter(Boolean),
+        });
+      }
       setShowForm(false);
       setEditing(null);
       await load(search);
@@ -425,6 +435,17 @@ export default function BookingsManagementPage() {
           <Plus size={16} /> Захиалга бүртгэх
         </button>
       </header>
+
+      {savedBooking && (
+        <section role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+          <p className="font-semibold">Захиалга хадгалагдлаа · {savedBooking.ref}</p>
+          <p className="mt-1">Өрөө {savedBooking.room} · Ор {savedBooking.beds.join(", ")}</p>
+          <p className="mt-1">Урьдчилгаа төлбөрийг дараагийн алхамд бүртгэнэ. Энэ захиалгыг дахин үүсгэх шаардлагагүй.</p>
+          <Link href={`/admin/payments?bookingId=${encodeURIComponent(savedBooking.id)}&deposit=1`} className="mt-3 inline-flex rounded-lg bg-teal px-4 py-2 font-medium text-white">
+            Энэ захиалгын урьдчилгаа бүртгэх
+          </Link>
+        </section>
+      )}
 
       <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
         Үнийн дүн нь серверийн тухайн үеийн үнээр тооцсон тохиролцсон захиалгын үнэ; мөнгө хүлээн авсны баталгаа биш.

@@ -25,10 +25,10 @@ export async function GET(request: NextRequest) {
     { data: records, error: recordsError },
   ] = await Promise.all([
     supabase.from("bookings")
-      .select("id, ref, fname, lname, phone, total, status, created_at")
+      .select("id, ref, fname, lname, phone, room_id, check_in, check_out, total, status, created_at, booking_bed_assignments(bed_id, released_at)")
       .order("created_at", { ascending: false }),
     supabase.from("booking_payment_records")
-      .select("id, booking_id, kind, status, amount, method, received_on, reference, note, reason, created_by, verified_by, completed_by, created_at, completed_at")
+      .select("id, booking_id, kind, status, amount::text, method, received_on, reference, note, reason, created_by, verified_by, completed_by, created_at, completed_at")
       .order("created_at", { ascending: false }),
   ]);
   if (bookingsError || recordsError) {

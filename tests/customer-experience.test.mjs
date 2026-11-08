@@ -74,12 +74,14 @@ test("booking notices use an explicit local capture transport and never send ext
 
 test("customer booking access uses authenticated ownership and never email matching", () => {
   const profile = fs.readFileSync(path.join(root, "src/app/profile/page.tsx"), "utf8");
+  const bookingsRoute = fs.readFileSync(path.join(root, "src/app/api/customer/bookings/route.ts"), "utf8");
   const migration = fs.readFileSync(path.join(root, "supabase/customer_booking_ownership_migration.sql"), "utf8");
   const bookingRoute = fs.readFileSync(path.join(root, "src/app/api/booking/route.ts"), "utf8");
   const previewRoute = fs.readFileSync(path.join(root, "src/app/api/bed-availability/route.ts"), "utf8");
 
-  assert.match(profile, /\.eq\("customer_user_id", customerId\)/);
-  assert.match(profile, /loadCustomerData\(currentUser\.id,/);
+  assert.match(bookingsRoute, /\.eq\("customer_user_id", auth.user.id\)/);
+  assert.match(profile, /\/api\/customer\/bookings/);
+  assert.match(profile, /loadCustomerData\(\(\) => active\)/);
   assert.doesNotMatch(profile, /\.eq\("email"/);
   assert.match(migration, /customer_user_id = \(select auth\.uid\(\)\)/);
   assert.match(migration, /public\.has_workspace_role\(array\['customer'\]\)/);

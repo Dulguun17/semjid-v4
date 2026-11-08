@@ -5,7 +5,7 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin";
 const GENDERS = new Set(["female", "male"]);
 
 export async function GET(request: NextRequest) {
-  if (process.env.NODE_ENV === "production" || process.env.BED_AVAILABILITY_PREVIEW !== "true") {
+  if (process.env.NODE_ENV === "production" || (process.env.BED_AVAILABILITY_PREVIEW !== "true" && process.env.CUSTOMER_BOOKING_TEST_ENABLED !== "true")) {
     return NextResponse.json({ error: "Bed availability preview is not enabled." }, { status: 404 });
   }
 

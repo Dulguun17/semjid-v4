@@ -27,6 +27,21 @@ function loadTypeScript(relativePath) {
 }
 
 const { calculateBookingFinancials, formatMntAmount } = loadTypeScript("src/lib/payment-ledger.ts");
+const { readReceptionPaymentAttempt, receptionPaymentStorageKey } = loadTypeScript("src/lib/reception-payment.ts");
+
+test("an interrupted reception payment restores the exact request and idempotency key after reload", () => {
+  const request = {
+    booking_id: "synthetic-walk-in", kind: "payment", amount: "25000", method: "cash",
+    status: "completed", received_on: "2026-11-04", verified: false,
+    reference: null, note: null, reason: null, idempotency_key: "synthetic-request-key",
+  };
+  const values = new Map([[receptionPaymentStorageKey(request.booking_id), JSON.stringify(request)]]);
+  const storage = { getItem: key => values.get(key) ?? null };
+  assert.deepEqual(readReceptionPaymentAttempt(storage, request.booking_id), request);
+  assert.equal(readReceptionPaymentAttempt(storage, "another-booking"), null);
+  values.set(receptionPaymentStorageKey("another-booking"), JSON.stringify(request));
+  assert.throws(() => readReceptionPaymentAttempt(storage, "another-booking"));
+});
 
 test("deposits and multiple completed payments calculate precise balance", () => {
   const values = calculateBookingFinancials(100_000, [

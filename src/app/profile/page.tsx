@@ -1,12 +1,16 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useLang } from "@/lib/lang-context";
 import { LogOut, Edit2, Save, X, Check, Star } from "lucide-react";
 import { formatMNT, PHONE1, rooms, roomInstances } from "@/lib/data";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { workspaceAuthorizationHeaders } from "@/lib/workspace-api";
+import { formatMntAmount } from "@/lib/payment-ledger";
+import { BookingPaymentInstructions } from "@/components/ui/BookingPaymentInstructions";
+import { customerBookingStatusLabel } from "@/lib/customer-booking";
 
 type Booking = {
   id: string;
@@ -18,6 +22,9 @@ type Booking = {
   total: number;
   status: string;
   created_at: string;
+  beds: string[];
+  expires_at: string | null;
+  financials: { completedPayments: string; completedRefunds: string; netReceived: string; pendingPayments: string; remainingBalance: string | null; completeHistory: boolean };
 };
 
 type BookingFeedback = {
@@ -36,6 +43,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const { lang } = useLang();
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [workspaceRole, setWorkspaceRole] = useState<"customer" | "staff" | "ceo" | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(true);
   const [bookingsError, setBookingsError] = useState("");
@@ -60,25 +68,44 @@ export default function ProfilePage() {
     phone: "",
   });
 
-  const loadCustomerData = useCallback(async (customerId: string, isActive: () => boolean = () => true) => {
+  const loadCustomerData = useCallback(async (isActive: () => boolean = () => true) => {
     setLoadingBookings(true);
     setLoadingFeedback(true);
     setBookingsError("");
     setFeedbackError("");
 
-    const { data: bookingRows, error: bookingError } = await supabase
-      .from("bookings")
-      .select("id, ref, room_id, check_in, check_out, guests, total, status, created_at")
-      .eq("customer_user_id", customerId)
-      .order("created_at", { ascending: false });
-    if (!isActive()) return;
-    if (bookingError) {
-      console.error("Failed to load customer bookings", { code: bookingError.code });
+    try {
+      const { data: role, error } = await supabase.rpc("get_workspace_role");
+      if (!isActive()) return;
+      if (error || !["customer", "staff", "ceo"].includes(role)) throw new Error("Role unavailable");
+      setWorkspaceRole(role);
+      if (role !== "customer") {
+        setBookings([]);
+        setFeedback([]);
+        setLoadingBookings(false);
+        setLoadingFeedback(false);
+        return;
+      }
+    } catch {
+      if (!isActive()) return;
+      setLoadingBookings(false);
+      setLoadingFeedback(false);
+      setBookingsError(lang === "mn" ? "Бүртгэлийн эрхийг шалгаж чадсангүй. Дахин оролдоно уу." : "Your account access could not be verified. Please retry.");
+      setFeedbackError(lang === "mn" ? "Бүртгэлийн эрхийг шалгаж чадсангүй." : "Your account access could not be verified.");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/customer/bookings", { headers: await workspaceAuthorizationHeaders(), cache: "no-store" });
+      const result = await response.json();
+      if (!isActive()) return;
+      if (!response.ok || !Array.isArray(result.bookings)) throw new Error("Booking details unavailable");
+      setBookings(result.bookings);
+    } catch {
+      if (!isActive()) return;
       setBookingsError(lang === "mn"
         ? "Захиалгыг ачаалж чадсангүй. Дахин оролдоно уу."
         : "Your bookings could not be loaded. Please try again.");
-    } else {
-      setBookings(bookingRows || []);
     }
     setLoadingBookings(false);
 
@@ -105,6 +132,19 @@ export default function ProfilePage() {
 
   useEffect(() => {
     let active = true;
+    let expectedUserId: string | null = null;
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT" || (expectedUserId && session?.user.id !== expectedUserId)) {
+        active = false;
+        setBookings([]);
+        setFeedback([]);
+        setUser(null);
+        setWorkspaceRole(null);
+        setFormData({ firstName: "", lastName: "", phone: "" });
+        setChecking(true);
+        router.replace("/login");
+      }
+    });
     const loadProfile = async () => {
       try {
         const { data, error: sessionError } = await supabase.auth.getSession();
@@ -114,6 +154,7 @@ export default function ProfilePage() {
           return;
         }
         const currentUser = data.session.user;
+        expectedUserId = currentUser.id;
         if (!active) return;
         setUser(currentUser);
         const meta = currentUser.user_metadata || {};
@@ -123,7 +164,7 @@ export default function ProfilePage() {
           phone: currentUser.phone || meta.phone || "",
         });
         setChecking(false);
-        await loadCustomerData(currentUser.id, () => active);
+        await loadCustomerData(() => active);
       } catch {
         console.error("Failed to load customer profile");
         if (active) {
@@ -143,7 +184,7 @@ export default function ProfilePage() {
       }
     };
     void loadProfile();
-    return () => { active = false; };
+    return () => { active = false; subscription.subscription.unsubscribe(); };
   }, [lang, loadCustomerData, router]);
 
   const handleSignOut = async () => {
@@ -198,7 +239,7 @@ export default function ProfilePage() {
       });
       const result = await response.json() as { feedback?: BookingFeedback };
       if (response.status === 409 && user) {
-        await loadCustomerData(user.id);
+        await loadCustomerData();
         setReviewingBookingId(null);
         setFeedbackNotice(lang === "mn"
           ? "Энэ буудлын үнэлгээг аль хэдийн илгээсэн байна. Хадгалсан үнэлгээг доор харууллаа."
@@ -266,15 +307,7 @@ export default function ProfilePage() {
   };
 
   const statusLabel = (status: string) => {
-    const labels: Record<string, { mn: string; en: string }> = {
-      pending:   { mn: "Хүлээгдэж байна", en: "Pending" },
-      confirmed: { mn: "Баталгаажсан",    en: "Confirmed" },
-      checked_in: { mn: "Буудаллаж байна", en: "Checked in" },
-      checked_out: { mn: "Буудал дууссан", en: "Checked out" },
-      cancelled: { mn: "Цуцлагдсан",      en: "Cancelled" },
-      no_show: { mn: "Ирээгүй", en: "No show" },
-    };
-    return labels[status]?.[lang] || status;
+    return customerBookingStatusLabel(status, lang);
   };
 
   if (checking) {
@@ -449,6 +482,13 @@ export default function ProfilePage() {
         </div>
 
         {/* Bookings Section */}
+        {workspaceRole === "staff" || workspaceRole === "ceo" ? (
+          <section role="status" className="rounded-2xl border border-teal/20 bg-white p-6 sm:p-8">
+            <h2 className="text-xl font-semibold">{lang === "mn" ? "Ажлын бүртгэл" : "Work account"}</h2>
+            <p className="mt-3 text-slate-600">{lang === "mn" ? "Та ажлын бүртгэлээр нэвтэрсэн байна. Хувийн захиалга болон сэтгэгдлийг хэрэглэгчийн бүртгэлээр харна. Ажлын үйлдлээ самбараас хийнэ үү." : "You are signed in with a work account. Personal bookings and private feedback use a customer account. Continue in your workspace for staff or CEO tools."}</p>
+            <Link href="/admin" className="mt-5 inline-flex rounded-lg bg-teal px-5 py-3 font-medium text-white">{lang === "mn" ? "Ажлын самбар нээх" : "Open workspace"}</Link>
+          </section>
+        ) : <>
         <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
           <h2 className="text-2xl font-bold text-slate-900 mb-6">{labels.bookings[lang]}</h2>
 
@@ -461,7 +501,7 @@ export default function ProfilePage() {
               <p role="alert" className="text-red-700 bg-red-50 rounded-lg p-4">{bookingsError}</p>
               <button
                 type="button"
-                onClick={() => user && void loadCustomerData(user.id)}
+                onClick={() => user && void loadCustomerData()}
                 className="mt-4 rounded-lg bg-teal px-4 py-2 font-medium text-white hover:bg-teal-dark"
               >
                 {labels.retry[lang]}
@@ -500,12 +540,13 @@ export default function ProfilePage() {
                         <div>
                           <p className="text-slate-500 text-xs mb-1">{lang === "mn" ? "Өрөө" : "Room"}</p>
                           <p className="font-semibold text-slate-900">{getRoomName(booking.room_id)}</p>
+                          <p className="mt-1 text-xs text-slate-600">{lang === "mn" ? "Ор" : "Beds"}: {booking.beds.join(", ") || (lang === "mn" ? "Хүлээн авалтаас лавлана уу" : "Ask reception")}</p>
                         </div>
                         <div>
                           <p className="text-slate-500 text-xs mb-1">{lang === "mn" ? "Огноо" : "Dates"}</p>
                           <p className="font-semibold text-slate-900">
-                            {new Date(booking.check_in).toLocaleDateString(lang === "mn" ? "mn-MN" : "en-US")} -{" "}
-                            {new Date(booking.check_out).toLocaleDateString(lang === "mn" ? "mn-MN" : "en-US")}
+                            {new Date(`${booking.check_in}T00:00:00`).toLocaleDateString(lang === "mn" ? "mn-MN" : "en-US")} -{" "}
+                            {new Date(`${booking.check_out}T00:00:00`).toLocaleDateString(lang === "mn" ? "mn-MN" : "en-US")}
                           </p>
                         </div>
                         <div>
@@ -518,6 +559,17 @@ export default function ProfilePage() {
                           <p className="mt-1 text-[10px] text-slate-500">
                             {lang === "mn" ? "Тохирсон үнэ; төлсөн дүн биш" : "Agreed price; not amount paid"}
                           </p>
+                        </div>
+                        <div className="col-span-full mt-3 grid gap-3 rounded-xl bg-slate-50 p-4 sm:grid-cols-2">
+                          {[
+                            [lang === "mn" ? "Баталгаажсан хүлээн авалт" : "Verified receipts", booking.financials.completedPayments],
+                            [lang === "mn" ? "Буцаасан дүн" : "Completed refunds", booking.financials.completedRefunds],
+                            [lang === "mn" ? "Цэвэр хүлээн авсан" : "Net received", booking.financials.netReceived],
+                            [lang === "mn" ? "Хүлээгдэж буй шилжүүлэг" : "Pending transfers", booking.financials.pendingPayments],
+                          ].map(([label, value]) => <p key={label} className="text-sm"><span className="block text-slate-500">{label}</span><strong>{formatMntAmount(value)}</strong></p>)}
+                          <p className="text-sm"><span className="block text-slate-500">{lang === "mn" ? "Үлдэгдэл" : "Remaining balance"}</span><strong>{booking.financials.remainingBalance === null ? (lang === "mn" ? "Хүлээн авалтаар тодруулна" : "Confirm with reception") : formatMntAmount(booking.financials.remainingBalance)}</strong></p>
+                          {!booking.financials.completeHistory && <p className="text-sm text-amber-800">{lang === "mn" ? "Өмнөх төлбөрийн түүх бүрэн баталгаажаагүй." : "Historical payment coverage is incomplete."}</p>}
+                          {booking.status === "pending" && booking.expires_at && <p className="text-sm text-amber-800 sm:col-span-2">{lang === "mn" ? "Ажилтны баталгаажуулалт хүлээгдэж байна. Түр хадгалалтын хугацаа" : "Awaiting staff confirmation. Pending hold expires"} · {new Date(booking.expires_at).toLocaleString(lang === "mn" ? "mn-MN" : "en-US", { timeZone: "Asia/Ulaanbaatar" })}</p>}
                         </div>
                         {booking.status === "checked_out"
                           && !loadingFeedback
@@ -581,6 +633,7 @@ export default function ProfilePage() {
           )}
         </div>
 
+        <section className="mt-8"><BookingPaymentInstructions /></section>
         <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm" aria-labelledby="my-feedback-heading">
           <h2 id="my-feedback-heading" className="mb-6 text-2xl font-bold text-slate-900">{labels.myFeedback[lang]}</h2>
           {feedbackNotice && <p role="status" className="mb-4 rounded-lg bg-emerald-50 p-4 text-emerald-800">{feedbackNotice}</p>}
@@ -593,7 +646,7 @@ export default function ProfilePage() {
               <p role="alert" className="rounded-lg bg-red-50 p-4 text-red-700">{feedbackError}</p>
               <button
                 type="button"
-                onClick={() => user && void loadCustomerData(user.id)}
+                onClick={() => user && void loadCustomerData()}
                 className="mt-4 rounded-lg bg-teal px-4 py-2 font-medium text-white hover:bg-teal-dark"
               >
                 {labels.retry[lang]}
@@ -631,6 +684,7 @@ export default function ProfilePage() {
             </div>
           )}
         </section>
+        </>}
       </div>
     </div>
   );

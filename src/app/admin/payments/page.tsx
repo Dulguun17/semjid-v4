@@ -1,10 +1,13 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { FormEvent, Suspense, useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { CreditCard, Search } from "lucide-react";
 import { workspaceAuthorizationHeaders } from "@/lib/workspace-api";
 import { formatMntAmount } from "@/lib/payment-ledger";
 import { ulaanbaatarToday } from "@/lib/bed-availability";
+import { readReceptionPaymentAttempt, receptionPaymentStorageKey, type ReceptionPaymentRequest } from "@/lib/reception-payment";
 
 type PaymentRecord = {
   id: string;
@@ -30,6 +33,10 @@ type Booking = {
   fname: string;
   lname: string;
   phone: string;
+  room_id: string;
+  check_in: string;
+  check_out: string;
+  booking_bed_assignments: { bed_id: string; released_at: string | null }[];
   total: number | string | null;
   status: string;
   created_at: string;
@@ -198,25 +205,37 @@ function BookingPaymentCard({
   booking,
   canManage,
   onRefresh,
+  openPayment = false,
+  onRecorded,
 }: {
   booking: Booking;
   canManage: boolean;
   onRefresh: () => Promise<void>;
+  openPayment?: boolean;
+  onRecorded: () => void;
 }) {
-  const [mode, setMode] = useState<CreateMode | null>(null);
-  const [amount, setAmount] = useState("");
-  const [method, setMethod] = useState<"cash" | "bank_transfer">("cash");
-  const [receivedOn, setReceivedOn] = useState(ulaanbaatarToday());
-  const [verified, setVerified] = useState(false);
-  const [reference, setReference] = useState("");
-  const [note, setNote] = useState("");
-  const [reason, setReason] = useState("");
+  const [restored] = useState(() => {
+    try {
+      return { attempt: typeof window === "undefined" ? null : readReceptionPaymentAttempt(sessionStorage, booking.id), error: "" };
+    } catch {
+      return { attempt: null, error: "Өмнөх төлбөрийн хүсэлтийг сэргээж чадсангүй. Төлбөрийн түүхийг шалгуулна уу." };
+    }
+  });
+  const [pendingRequest, setPendingRequest] = useState<ReceptionPaymentRequest | null>(restored.attempt);
+  const [mode, setMode] = useState<CreateMode | null>(restored.attempt?.kind ?? (openPayment ? "payment" : null));
+  const [amount, setAmount] = useState(restored.attempt?.amount ?? "");
+  const [method, setMethod] = useState<"cash" | "bank_transfer">(restored.attempt?.method ?? "cash");
+  const [receivedOn, setReceivedOn] = useState(restored.attempt?.received_on ?? ulaanbaatarToday());
+  const [verified, setVerified] = useState(restored.attempt?.verified ?? false);
+  const [reference, setReference] = useState(restored.attempt?.reference ?? "");
+  const [note, setNote] = useState(restored.attempt?.note ?? "");
+  const [reason, setReason] = useState(restored.attempt?.reason ?? "");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
-  const idempotencyKey = useRef<string | null>(null);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (saving || restored.error) return;
     if (!mode || !/^[1-9]\d*$/.test(amount)) {
       setFormError("Дүнг бүхэл төгрөгөөр оруулна уу.");
       return;
@@ -232,36 +251,44 @@ function BookingPaymentCard({
     setSaving(true);
     setFormError("");
     try {
-      idempotencyKey.current ||= crypto.randomUUID();
+      const request: ReceptionPaymentRequest = pendingRequest ?? {
+        booking_id: booking.id,
+        kind: mode,
+        amount,
+        method,
+        status: mode === "refund" ? "requested" : method === "cash" || verified ? "completed" : "pending",
+        received_on: mode === "refund" || (method === "bank_transfer" && !verified) ? null : receivedOn,
+        verified: mode === "payment" && method === "bank_transfer" && verified,
+        reference: reference.trim() || null,
+        note: mode === "payment" ? note.trim() || null : null,
+        reason: mode === "refund" ? reason.trim() : null,
+        idempotency_key: crypto.randomUUID(),
+      };
+      sessionStorage.setItem(receptionPaymentStorageKey(booking.id), JSON.stringify(request));
+      setPendingRequest(request);
       const headers = { ...(await workspaceAuthorizationHeaders()), "Content-Type": "application/json" };
       const response = await fetch("/api/staff/payments", {
         method: "POST",
         headers,
-        body: JSON.stringify({
-          booking_id: booking.id,
-          kind: mode,
-          amount,
-          method,
-          status: mode === "refund"
-            ? "requested"
-            : method === "cash" || verified ? "completed" : "pending",
-          received_on: mode === "refund" || (method === "bank_transfer" && !verified) ? null : receivedOn,
-          verified: mode === "payment" && method === "bank_transfer" && verified,
-          reference: reference.trim() || null,
-          note: mode === "payment" ? note.trim() || null : null,
-          reason: mode === "refund" ? reason.trim() : null,
-          idempotency_key: idempotencyKey.current,
-        }),
+        body: JSON.stringify(request),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Төлбөрийн бүртгэл хадгалж чадсангүй.");
+      if (!response.ok) {
+        if ([400, 401, 403, 404].includes(response.status)) {
+          sessionStorage.removeItem(receptionPaymentStorageKey(booking.id));
+          setPendingRequest(null);
+        }
+        throw new Error(result.error || "Төлбөрийн бүртгэл хадгалж чадсангүй.");
+      }
+      sessionStorage.removeItem(receptionPaymentStorageKey(booking.id));
+      setPendingRequest(null);
+      onRecorded();
       setMode(null);
       setAmount("");
       setReference("");
       setNote("");
       setReason("");
       setVerified(false);
-      idempotencyKey.current = null;
       await onRefresh();
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Төлбөрийн бүртгэл хадгалж чадсангүй.");
@@ -298,10 +325,12 @@ function BookingPaymentCard({
             <span className="rounded-full bg-teal/10 px-2.5 py-1 text-xs font-medium text-teal-800">{stateLabel(booking.financials.paymentState)}</span>
           </div>
           <p className="mt-1 text-sm text-slate-700">{booking.fname} {booking.lname} · {booking.phone}</p>
+          <p className="mt-1 text-sm text-slate-600">Өрөө {booking.room_id} · Ор {booking.booking_bed_assignments.filter(assignment => !assignment.released_at).map(assignment => assignment.bed_id).join(", ") || "—"}</p>
+          <p className="mt-1 text-xs text-slate-500">{booking.check_in} — {booking.check_out}</p>
         </div>
         <div className="flex gap-2">
-          <button type="button" onClick={() => { setMode("payment"); setFormError(""); }} className="rounded-lg bg-teal px-3 py-2 text-xs font-medium text-white">Төлбөр бүртгэх</button>
-          <button type="button" onClick={() => { setMode("refund"); setFormError(""); }} disabled={BigInt(booking.financials.netReceived) <= BigInt(0)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 disabled:opacity-40">Буцаалт хүсэх</button>
+          <button type="button" disabled={saving || !!pendingRequest || !!restored.error} onClick={() => { setMode("payment"); setFormError(""); }} className="rounded-lg bg-teal px-3 py-2 text-xs font-medium text-white disabled:opacity-50">Төлбөр бүртгэх</button>
+          <button type="button" onClick={() => { setMode("refund"); setFormError(""); }} disabled={saving || !!pendingRequest || !!restored.error || BigInt(booking.financials.netReceived) <= BigInt(0)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 disabled:opacity-40">Буцаалт хүсэх</button>
         </div>
       </div>
 
@@ -326,9 +355,12 @@ function BookingPaymentCard({
         </p>
       )}
 
+      {restored.error && <p role="alert" className="mt-4 text-sm text-red-700">{restored.error}</p>}
+      {pendingRequest && <p role="status" className="mt-4 text-sm text-amber-800">Захиалга хадгалагдсан. Төлбөрийн хариу баталгаажаагүй бол ижил хүсэлтээр дахин оролдоно уу. Шинэ захиалга үүсгэх шаардлагагүй.</p>}
       {mode && (
         <form onSubmit={submit} className="mt-4 grid gap-3 rounded-xl border border-teal/20 bg-teal/5 p-4 sm:grid-cols-2">
           <h3 className="sm:col-span-2 text-sm font-semibold text-slate-800">{mode === "payment" ? "Хүлээн авсан төлбөр бүртгэх" : "Буцаан олголтын хүсэлт бүртгэх"}</h3>
+          <fieldset disabled={saving || !!pendingRequest || !!restored.error} className="contents">
           <label className="text-xs text-slate-600">
             Дүн (₮)
             <input inputMode="numeric" pattern="[0-9]*" required value={amount} onChange={event => setAmount(event.target.value.replace(/\D/g, ""))} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
@@ -370,10 +402,11 @@ function BookingPaymentCard({
           {mode === "payment" && method === "bank_transfer" && !verified && (
             <p className="sm:col-span-2 text-xs text-amber-800">Баталгаажаагүй шилжүүлэг хүлээгдэж буй төлөвтэй хадгалагдана; хүлээн авсан төлбөрт тооцохгүй.</p>
           )}
+          </fieldset>
           {formError && <p role="alert" className="sm:col-span-2 text-xs text-red-700">{formError}</p>}
           <div className="sm:col-span-2 flex gap-2">
-            <button disabled={saving || !amount || (mode === "refund" && !reason.trim())} className="rounded-lg bg-teal px-4 py-2 text-xs font-medium text-white disabled:opacity-50">{saving ? "Хадгалж байна…" : "Бүртгэх"}</button>
-            <button type="button" disabled={saving} onClick={() => setMode(null)} className="rounded-lg border border-slate-200 px-4 py-2 text-xs">Болих</button>
+            <button disabled={saving || !!restored.error || !amount || (mode === "refund" && !reason.trim())} className="rounded-lg bg-teal px-4 py-2 text-xs font-medium text-white disabled:opacity-50">{saving ? "Хадгалж байна…" : pendingRequest ? "Ижил хүсэлтээр дахин оролдох" : "Бүртгэх"}</button>
+            <button type="button" disabled={saving || !!pendingRequest} onClick={() => setMode(null)} className="rounded-lg border border-slate-200 px-4 py-2 text-xs">Болих</button>
           </div>
         </form>
       )}
@@ -395,11 +428,19 @@ function BookingPaymentCard({
 }
 
 export default function BookingPaymentsPage() {
+  return <Suspense fallback={<p className="py-12 text-center">Ачаалж байна…</p>}><BookingPaymentsContent /></Suspense>;
+}
+
+function BookingPaymentsContent() {
+  const params = useSearchParams();
+  const selectedBookingId = params.get("bookingId");
+  const openPayment = params.get("deposit") === "1";
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [canManage, setCanManage] = useState(false);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [recorded, setRecorded] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -423,7 +464,7 @@ export default function BookingPaymentsPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  const filtered = bookings.filter(booking =>
+  const filtered = bookings.filter(booking => (!selectedBookingId || booking.id === selectedBookingId) &&
     [booking.ref, booking.fname, booking.lname, booking.phone]
       .some(value => value.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
   );
@@ -434,6 +475,14 @@ export default function BookingPaymentsPage() {
         <h1 className="text-2xl font-bold text-slate-900">Захиалгын төлбөрийн бүртгэл</h1>
         <p className="mt-1 text-sm text-slate-500">Захиалгын төлөвөөс тусдаа, ажилтны бүртгэсэн мөнгөн урсгалын түүх.</p>
       </header>
+      {selectedBookingId && (
+        <section role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+          <p>Хадгалсан захиалгын төлбөр. Өрөө, ор болон хүлээн авсан дүнг шалгаж урьдчилгааг бүртгэнэ үү.</p>
+          <Link href="/admin/bookings/manage" className="mt-2 inline-block underline">Захиалгууд руу буцах</Link>
+          <Link href="/admin/payments" className="ml-4 underline">Бүх төлбөр</Link>
+        </section>
+      )}
+      {recorded && <p role="status" className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-900">Төлбөрийн бүртгэл хадгалагдлаа. Доорх хүлээн авсан дүн, үлдэгдлийг шалгана уу.</p>}
       <div role="status" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
         Онлайн төлбөр, QPay холбогдоогүй. QR эсвэл QPay үйлдэл энэ орчинд байхгүй. Баталгаажаагүй шилжүүлгийг мөнгө хүлээн авсанд тооцохгүй.
       </div>
@@ -441,13 +490,13 @@ export default function BookingPaymentsPage() {
         <Search size={16} className="text-slate-400" />
         <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Захиалгын дугаар, нэр, утсаар хайх" className="w-full py-3 text-sm outline-none" />
       </label>
-      {error && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p>}
+      {error && <div role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700"><p>{error}</p><button type="button" onClick={() => void load()} className="mt-2 underline">Мэдээллийг дахин ачаалах</button></div>}
       {loading ? (
         <div className="flex justify-center py-12"><div className="h-8 w-8 animate-spin rounded-full border-2 border-teal border-t-transparent" /></div>
-      ) : filtered.length ? (
+      ) : error ? null : filtered.length ? (
         <div className="space-y-4">
           {filtered.map(booking => (
-            <BookingPaymentCard key={booking.id} booking={booking} canManage={canManage} onRefresh={load} />
+            <BookingPaymentCard key={booking.id} booking={booking} canManage={canManage} onRefresh={load} openPayment={openPayment && booking.id === selectedBookingId && booking.payment_records.length === 0} onRecorded={() => setRecorded(true)} />
           ))}
         </div>
       ) : (

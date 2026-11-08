@@ -1,13 +1,16 @@
 "use client";
 
 import { AlertCircle } from "lucide-react";
+import { BookingWhatToExpect } from "@/components/ui/BookingWhatToExpect";
+import { BookingArrivalChecklist } from "@/components/ui/BookingArrivalChecklist";
+import { BookingFAQ } from "@/components/ui/BookingFAQ";
 import { useLang } from "@/lib/lang-context";
 
 export function BookingPageContent() {
   const { lang } = useLang();
 
   return (
-    <main className="flex min-h-[70vh] items-center justify-center bg-slate-50 px-4 py-12">
+    <main className="flex min-h-[70vh] flex-col items-center justify-center gap-7 bg-slate-50 px-4 py-12">
       <section className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <div className="flex items-start gap-3">
           <AlertCircle aria-hidden="true" className="mt-1 shrink-0 text-amber-700" />
@@ -50,6 +53,11 @@ export function BookingPageContent() {
           </p>
         </div>
       </section>
+      <div className="w-full max-w-6xl space-y-7">
+        <BookingArrivalChecklist />
+        <BookingWhatToExpect />
+        <BookingFAQ />
+      </div>
     </main>
   );
 }

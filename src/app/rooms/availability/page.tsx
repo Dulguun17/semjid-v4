@@ -1,6 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { BookingSteps } from "@/components/ui/BookingSteps";
+import { BookingArrivalChecklist } from "@/components/ui/BookingArrivalChecklist";
+import { BookingWhatToExpect } from "@/components/ui/BookingWhatToExpect";
+import { BookingFAQ } from "@/components/ui/BookingFAQ";
 import { rooms as roomDescriptions } from "@/lib/data";
 import { addUtcDays, validateBookingDates } from "@/lib/booking-rules";
 import { ulaanbaatarToday } from "@/lib/bed-availability";
@@ -84,6 +90,8 @@ export default function BedAvailabilityPage() {
   const [guestCount, setGuestCount] = useState(1);
   const [selectedRoomId, setSelectedRoomId] = useState("");
   const [selectedBedIds, setSelectedBedIds] = useState<string[]>([]);
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const [draftReady, setDraftReady] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -96,7 +104,24 @@ export default function BedAvailabilityPage() {
         }
         if (active) {
           setPolicy(result.policy as BookingPolicy);
-          setCheckOut(addUtcDays(today, result.policy.stay_nights));
+          let restored = false;
+          try {
+            const raw = sessionStorage.getItem("semjid:booking-selection");
+            const draft = raw ? JSON.parse(raw) : null;
+            if (draft && typeof draft.checkIn === "string" && typeof draft.checkOut === "string"
+              && !validateBookingDates(draft.checkIn, draft.checkOut, today, result.policy.stay_nights, result.policy.advance_months)
+              && ["female", "male"].includes(draft.gender) && Number.isInteger(draft.guestCount) && draft.guestCount >= 1 && draft.guestCount <= 5) {
+              setCheckIn(draft.checkIn);
+              setCheckOut(draft.checkOut);
+              setGender(draft.gender);
+              setGuestCount(draft.guestCount);
+              setSelectedRoomId(typeof draft.roomId === "string" ? draft.roomId : "");
+              setSelectedBedIds(Array.isArray(draft.bedIds) ? draft.bedIds.filter((id: unknown) => typeof id === "string").slice(0, draft.guestCount) : []);
+              restored = true;
+            }
+          } catch { /* A new selection still works when browser storage is unavailable. */ }
+          if (!restored) setCheckOut(addUtcDays(today, result.policy.stay_nights));
+          setDraftReady(true);
           setPolicyState("ready");
           setPolicyError("");
         }
@@ -108,7 +133,14 @@ export default function BedAvailabilityPage() {
         }
       });
     return () => { active = false; };
-  }, [today]);
+  }, [today, refreshVersion]);
+
+  useEffect(() => {
+    if (!draftReady || policyState !== "ready") return;
+    try {
+      sessionStorage.setItem("semjid:booking-selection", JSON.stringify({ checkIn, checkOut, gender, guestCount, roomId: selectedRoomId, bedIds: selectedBedIds }));
+    } catch { /* The selection remains available in the current page. */ }
+  }, [draftReady, policyState, checkIn, checkOut, gender, guestCount, selectedRoomId, selectedBedIds]);
 
   useEffect(() => {
     if (policyState !== "ready") return;
@@ -119,13 +151,13 @@ export default function BedAvailabilityPage() {
         if (!response.ok || !Array.isArray(result.rooms)) {
           throw new Error(result.error || "Room prices could not be loaded.");
         }
-        if (active) setRoomRates(result.rooms as RoomRates[]);
+        if (active) { setRoomRates(result.rooms as RoomRates[]); setPriceError(""); }
       })
       .catch(loadError => {
         if (active) setPriceError(loadError instanceof Error ? loadError.message : "Room prices could not be loaded.");
       });
     return () => { active = false; };
-  }, [policyState]);
+  }, [policyState, refreshVersion]);
 
   const dateError = policyState === "loading"
     ? (lang === "mn" ? "Захиалгын нөхцөлийг ачаалж байна." : "Loading booking requirements.")
@@ -153,6 +185,7 @@ export default function BedAvailabilityPage() {
             throw new Error(result.error || "Bed availability could not be loaded.");
           }
           setRooms(result.rooms as PublicRoom[]);
+          setSelectedBedIds(current => current.filter(id => result.rooms.some((room: PublicRoom) => room.beds.some(bed => bed.bed_id === id && bed.state === "available"))));
         })
         .catch(loadError => {
           if (!controller.signal.aborted) {
@@ -169,19 +202,10 @@ export default function BedAvailabilityPage() {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [checkIn, checkOut, dateError, gender, policy]);
+  }, [checkIn, checkOut, dateError, gender, policy, refreshVersion]);
 
   const roomNames = useMemo(() => new Map(roomDescriptions.map(room => [room.id, room.name[lang]])), [lang]);
   const rateByCategory = useMemo(() => new Map(roomRates.map(rate => [rate.id, rate])), [roomRates]);
-  const rateLabels: Array<[keyof Omit<RoomRates, "id">, { mn: string; en: string }]> = [
-    ["adult1", { mn: "Насанд хүрэгч (1)", en: "Adult (1)" }],
-    ["adult2", { mn: "Насанд хүрэгч (2)", en: "Adult (2)" }],
-    ["child02", { mn: "Хүүхэд (0–2 нас)", en: "Child (age 0–2)" }],
-    ["child37a", { mn: "Хүүхэд (3–7 нас, 1-р)", en: "Child (age 3–7, first)" }],
-    ["child37b", { mn: "Хүүхэд (3–7 нас, 2-р)", en: "Child (age 3–7, second)" }],
-    ["child812a", { mn: "Хүүхэд (8–12 нас, 1-р)", en: "Child (age 8–12, first)" }],
-    ["child812b", { mn: "Хүүхэд (8–12 нас, 2-р)", en: "Child (age 8–12, second)" }],
-  ];
 
   const clearBedSelection = () => {
     setRooms([]);
@@ -195,7 +219,6 @@ export default function BedAvailabilityPage() {
     if (selectedBedIds.includes(bedId)) {
       const remaining = selectedBedIds.filter(id => id !== bedId);
       setSelectedBedIds(remaining);
-      if (remaining.length === 0) setSelectedRoomId("");
       return;
     }
     if (selectedBedIds.length >= guestCount || (selectedRoomId && selectedRoomId !== roomId)) return;
@@ -203,231 +226,189 @@ export default function BedAvailabilityPage() {
     setSelectedBedIds(current => [...current, bedId]);
   };
 
+  const selectedRoom = rooms.find(room => room.room_id === selectedRoomId);
+  const currentStep = selectedRoom ? 3 : !dateError && rooms.length ? 2 : 1;
+  const selectedRate = selectedRoom ? rateByCategory.get(selectedRoom.category_id) : null;
+  const nightlyRate = selectedRate?.adult1 ?? selectedRate?.adult2 ?? null;
+  const selectionReady = selectedRoom && nightlyRate !== null && !priceError && selectedBedIds.length === guestCount
+    && selectedBedIds.every(id => selectedRoom.beds.some(bed => bed.bed_id === id && bed.state === "available"));
+  const dateMessages: Record<string, { mn: string; en: string }> = {
+    invalid_date: { mn: "Ирэх, гарах өдрөө шалгана уу.", en: "Check your arrival and departure dates." },
+    stay_duration_mismatch: { mn: `Одоогийн байрлах хугацаа ${policy?.stay_nights ?? 7} шөнө байна.`, en: `The current stay length is ${policy?.stay_nights ?? 7} nights.` },
+    check_in_in_past: { mn: "Ирэх өдөр өнгөрсөн байна.", en: "Choose an arrival date from today onward." },
+    too_far_in_advance: { mn: `Огноог ${policy?.advance_months ?? 3} сарын дотор сонгоно уу.`, en: `Choose an arrival within ${policy?.advance_months ?? 3} months.` },
+  };
+  const dateMessage = policyState === "unavailable"
+    ? (lang === "mn" ? "Захиалгын нөхцөл ачаалагдсангүй. Дахин ачаална уу." : "Booking requirements could not be loaded. Please retry.")
+    : dateError ? dateMessages[dateError]?.[lang] ?? dateError : null;
+  const retry = () => {
+    setError("");
+    setPriceError("");
+    setPolicyError("");
+    setRefreshVersion(value => value + 1);
+  };
+  const chooseAnotherRoom = () => {
+    setSelectedRoomId("");
+    setSelectedBedIds([]);
+  };
+
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-10 sm:px-8">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <header>
-          <p className="text-xs font-semibold uppercase tracking-widest text-teal">{lang === "mn" ? "Байр, өрөө" : "Accommodation"}</p>
-          <h1 className="mt-2 text-3xl font-semibold text-slate-900">
-            {lang === "mn" ? "Өрөө, орны хүртээмж" : "Room and bed availability"}
+    <main className="min-h-screen bg-[#f6f5f1] px-4 py-8 sm:px-8 sm:py-12">
+      <div className="mx-auto max-w-6xl space-y-7">
+        <header className="max-w-3xl space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-teal">Semjid Khujirt</p>
+          <h1 className="font-serif text-3xl leading-tight text-slate-900 sm:text-4xl">
+            {lang === "mn" ? "Байрлах захиалгаа төлөвлөх" : "Plan your stay"}
           </h1>
-          <p className="mt-2 max-w-3xl text-sm text-slate-600">
-            {lang === "mn"
-              ? "Өрөө бүрийн тусдаа орны сонгосон хугацааны төлөвийг харна. Одоо байрлаж буй зочны нэр болон захиалгын мэдээлэл энд харагдахгүй."
-              : "See individual bed status for your selected dates. Current guests’ names and booking details are never shown here."}
+          <p className="text-base leading-7 text-slate-600">
+            {lang === "mn" ? "Огноо, зочдоо сонгоод нэг өрөөний орнуудаас сонгоно уу. Хадгалахын өмнө нийт үнэ, мэдээллээ шалгана." : "Choose your dates and guests, then select beds in one room. Review the total and your details before saving."}
           </p>
         </header>
 
-        <ol aria-label={lang === "mn" ? "Захиалгын алхам" : "Booking steps"} className="grid gap-2 rounded-xl border border-slate-200 bg-white p-4 text-sm sm:grid-cols-5">
-          {[
-            lang === "mn" ? "1. Огноо" : "1. Dates",
-            lang === "mn" ? "2. Ор сонгох" : "2. Select beds",
-            lang === "mn" ? "3. Зочны мэдээлэл" : "3. Guest details",
-            lang === "mn" ? "4. Үнэ шалгах" : "4. Review price",
-            lang === "mn" ? "5. Захиалга илгээх" : "5. Submit",
-          ].map((step, index) => (
-            <li key={step} className={`rounded-lg px-2 py-2 ${index < 2 ? "bg-teal/10 font-medium text-teal-900" : "bg-slate-50 text-slate-500"}`}>
-              {step}
-              {index > 1 && <span className="mt-1 block text-[11px]">{lang === "mn" ? "Онлайн захиалга хаалттай" : "Online booking closed"}</span>}
-            </li>
-          ))}
-        </ol>
+        <BookingSteps activeStep={currentStep} />
 
-        <section className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="text-sm text-slate-700">
-            {lang === "mn" ? "Ирэх өдөр" : "Check-in"}
-            <input
-              type="date"
-              min={today}
-              value={checkIn}
-              disabled={!policy}
-              onChange={event => {
-                const nextCheckIn = event.target.value;
-                setCheckIn(nextCheckIn);
-                if (nextCheckIn) setCheckOut(addUtcDays(nextCheckIn, policy?.stay_nights ?? 7));
+        <section id="booking-filters" aria-labelledby="stay-details-heading" className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
+          <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="stay-details-heading" className="text-xl font-semibold text-slate-900">{lang === "mn" ? "1. Огноо, зочид" : "1. Dates & guests"}</h2>
+            <p className="text-sm text-slate-600">{lang === "mn" ? "Насанд хүрэгчдийн үнийн туршилтын захиалга" : "Adult-rate booking preview"}</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="text-sm font-medium text-slate-700">
+              {lang === "mn" ? "Ирэх өдөр" : "Check-in"}
+              <input type="date" min={today} value={checkIn} disabled={!policy} onChange={event => {
+                const value = event.target.value;
+                setCheckIn(value);
+                if (value) setCheckOut(addUtcDays(value, policy?.stay_nights ?? 7));
                 clearBedSelection();
-              }}
-              className="mt-1 block w-full rounded-lg border border-slate-300 p-2.5"
-            />
-          </label>
-          <label className="text-sm text-slate-700">
-            {lang === "mn"
-              ? `Гарах өдөр (${policy?.stay_nights ?? 7} шөнө)`
-              : `Check-out (${policy?.stay_nights ?? 7} nights)`}
-            <input
-              type="date"
-              value={checkOut}
-              disabled={!policy}
-              onChange={event => {
-                setCheckOut(event.target.value);
-                clearBedSelection();
-              }}
-              className="mt-1 block w-full rounded-lg border border-slate-300 p-2.5"
-            />
-          </label>
-          <label className="text-sm text-slate-700">
-            {lang === "mn" ? "Зочны хүйс" : "Guest gender"}
-            <select value={gender} disabled={!policy} onChange={event => {
-              setGender(event.target.value as GuestGender);
-              clearBedSelection();
-            }} className="mt-1 block w-full rounded-lg border border-slate-300 p-2.5">
-              <option value="">{lang === "mn" ? "Сонгоно уу" : "Select"}</option>
-              <option value="female">{lang === "mn" ? "Эмэгтэй" : "Female"}</option>
-              <option value="male">{lang === "mn" ? "Эрэгтэй" : "Male"}</option>
-            </select>
-          </label>
-          <label className="text-sm text-slate-700">
-            {lang === "mn" ? "Зочдын тоо / орны тоо" : "Guests / beds needed"}
-            <select
-              value={guestCount}
-              onChange={event => {
+              }} className="mt-2 block min-h-12 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 text-base" />
+            </label>
+            <label className="text-sm font-medium text-slate-700">
+              {lang === "mn" ? `Гарах өдөр · ${policy?.stay_nights ?? 7} шөнө` : `Check-out · ${policy?.stay_nights ?? 7} nights`}
+              <input type="date" value={checkOut} disabled={!policy} onChange={event => { setCheckOut(event.target.value); clearBedSelection(); }} className="mt-2 block min-h-12 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 text-base" />
+            </label>
+            <label className="text-sm font-medium text-slate-700">
+              {lang === "mn" ? "Зочдын хүйс" : "Guest gender"}
+              <select value={gender} disabled={!policy} onChange={event => { setGender(event.target.value as GuestGender); clearBedSelection(); }} className="mt-2 block min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-base">
+                <option value="">{lang === "mn" ? "Сонгоно уу" : "Select"}</option>
+                <option value="female">{lang === "mn" ? "Эмэгтэй" : "Female"}</option>
+                <option value="male">{lang === "mn" ? "Эрэгтэй" : "Male"}</option>
+              </select>
+            </label>
+            <label className="text-sm font-medium text-slate-700">
+              {lang === "mn" ? "Насанд хүрсэн зочид" : "Adult guests"}
+              <select value={guestCount} onChange={event => {
                 const count = Number(event.target.value);
                 setGuestCount(count);
-                const remaining = selectedBedIds.slice(0, count);
-                setSelectedBedIds(remaining);
-                if (remaining.length === 0) setSelectedRoomId("");
-              }}
-              className="mt-1 block w-full rounded-lg border border-slate-300 p-2.5"
-            >
-              {[1, 2, 3, 4, 5].map(count => <option key={count} value={count}>{count}</option>)}
-            </select>
-          </label>
-          <div className="sm:col-span-2 lg:col-span-4">
-            {dateError && <p role="alert" className="text-sm text-amber-800">{dateError}</p>}
+                setSelectedBedIds(current => current.slice(0, count));
+              }} className="mt-2 block min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-base">
+                {[1, 2, 3, 4, 5].map(count => <option key={count} value={count}>{count}</option>)}
+              </select>
+            </label>
           </div>
+          <p className="mt-4 text-sm leading-6 text-slate-600">{lang === "mn" ? "Нэг өрөөнд нэг ижил хүйсийн зочид байрлана. Хүүхэд болон тусгай багцын үнийг хүлээн авалтаас тодруулна уу." : "Guests sharing a room must have the same known gender. Ask reception about child and package pricing."}</p>
+          {dateMessage && <p role="status" className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{dateMessage}</p>}
         </section>
 
-        <div role="note" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          {lang === "mn"
-            ? "Гарах өдөр нь зөвхөн хуваарь юм. Тэр өдөр өнгөрөхөд ор сул болсон гэж батлахгүй; ажилтан бодитоор гарахыг бүртгэнэ."
-            : "Checkout is scheduled, not guaranteed. A bed is not considered vacated until staff record the actual checkout."}
-        </div>
+        <BookingArrivalChecklist />
+        <BookingWhatToExpect />
 
-        {!dateError && loading && <p role="status" className="rounded-xl bg-white p-6 text-sm text-slate-500">{lang === "mn" ? "Орны хүртээмжийг шалгаж байна…" : "Loading bed availability…"}</p>}
-        {error && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p>}
-        {priceError && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{priceError}</p>}
-        {policyState === "loading" && <p role="status" className="rounded-xl bg-white p-6 text-sm text-slate-500">{lang === "mn" ? "Нөхцөл болон үнийг ачаалж байна…" : "Loading booking requirements and prices…"}</p>}
-        {policyState === "unavailable" && (
-          <p role="alert" className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
-            {lang === "mn" ? "Хүртээмжийн урьдчилсан харагдац идэвхгүй эсвэл тохируулагдаагүй. Захиалга хийх боломжгүй." : "The availability preview is disabled or not configured. Booking is unavailable."}
-          </p>
+        {(error || priceError || policyState === "unavailable") && (
+          <div role="alert" className="rounded-xl border border-red-200 bg-white p-5">
+            <p className="text-base font-medium text-red-800">{lang === "mn" ? "Өрөө, үнийг одоогоор баталгаажуулж чадсангүй." : "Rooms and prices could not be verified right now."}</p>
+            <p className="mt-2 text-sm text-slate-600">{lang === "mn" ? "Таны огноо, зочдын сонголт хадгалагдана. Дахин ачаалаад оролдоно уу." : "Your dates and guest selection are preserved. Reload the availability and try again."}</p>
+            <button type="button" onClick={retry} className="mt-4 min-h-11 rounded-lg border border-slate-300 px-4 font-medium">{lang === "mn" ? "Дахин ачаалах" : "Retry availability"}</button>
+          </div>
         )}
-        {!loading && !error && !dateError && policyState === "ready" && rooms.length === 0 && (
-          <p className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
-            {lang === "mn"
-              ? "Сонгосон хугацаанд хүртээмжийн мэдээлэл ирсэнгүй."
-              : "No availability data was returned for the selected dates."}
-          </p>
-        )}
+        {(loading || policyState === "loading") && <p role="status" className="rounded-xl bg-white p-5 text-slate-700">{lang === "mn" ? "Өрөө, үнийг шалгаж байна…" : "Checking rooms and prices…"}</p>}
 
-        <div className="space-y-4">
-          {rooms.map(room => (
-            <section key={room.room_id} className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="font-semibold text-slate-900">
-                {roomNames.get(room.category_id) || room.category_id} · {room.room_id}
-              </h2>
-              {room.allocation_required && (
-                <p className="mt-2 text-xs text-amber-800">
-                  {lang === "mn" ? "Хуучин захиалгын орны хуваарилалтыг ажилтан тодруулж байна." : "Staff are resolving a legacy bed allocation."}
-                </p>
-              )}
-              <p className={`mt-2 text-sm ${room.gender_conflict || !room.gender_matches_selection ? "text-rose-700" : "text-slate-600"}`}>
-                {room.gender_conflict
-                  ? (lang === "mn" ? "Сонгосон хугацаанд хүйсийн зөрчил байна. Өрөө бүхэл хугацаанд боломжгүй." : "Reservations with conflicting genders overlap these dates. The room is unavailable for this stay.")
-                  : room.gender_for_dates
-                    ? (lang === "mn"
-                      ? `Сонгосон хугацааны өрөөний хүйс: ${genderLabel(room.gender_for_dates, lang)}${room.gender_matches_selection ? "" : " — сонгосон хүйст боломжгүй"}`
-                      : `Room gender for selected dates: ${genderLabel(room.gender_for_dates, lang)}${room.gender_matches_selection ? "" : " — unavailable for the selected gender"}`)
-                    : (lang === "mn" ? "Сонгосон хугацаанд өрөөний хүйс тогтоогүй." : "No gender designation is established for these dates.")}
-              </p>
-              <div className="mt-4 rounded-lg bg-slate-50 p-3">
-                <h3 className="text-sm font-medium text-slate-800">{lang === "mn" ? "Өрөөний үнийн жагсаалт" : "Room rate schedule"}</h3>
-                {rateByCategory.has(room.category_id) ? (
-                  <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3">
-                    {rateLabels.map(([key, label]) => {
-                      const amount = rateByCategory.get(room.category_id)?.[key];
-                      return amount === null || amount === undefined ? null : (
-                        <div key={key} className="flex justify-between gap-2">
-                          <dt className="text-slate-600">{label[lang]}</dt>
-                          <dd className="font-medium text-slate-900">{formatMntAmount(amount)} / {lang === "mn" ? "шөнө" : "night"}</dd>
+        {!dateError && !loading && !error && !selectedRoom && (
+          <section aria-labelledby="choose-room-heading" className="space-y-5">
+            <div>
+              <h2 id="choose-room-heading" className="text-2xl font-semibold text-slate-900">{lang === "mn" ? "2. Нэг өрөө сонгох" : "2. Choose one room"}</h2>
+              <p className="mt-2 text-base text-slate-600">{lang === "mn" ? "Зураг, насанд хүрэгчдийн үнэ болон сул орны тоог харьцуулаад өрөөгөө сонгоно уу." : "Compare the photos, adult rates and available beds, then choose your room."}</p>
+            </div>
+            <div className="grid gap-5 md:grid-cols-2">
+              {rooms.map(room => {
+                const description = roomDescriptions.find(item => item.id === room.category_id);
+                const rates = rateByCategory.get(room.category_id);
+                const rate = rates?.adult1 ?? rates?.adult2 ?? null;
+                const available = room.beds.filter(bed => bed.state === "available").length;
+                const canChoose = available >= guestCount && room.gender_matches_selection && !room.gender_conflict && !room.allocation_required && rate !== null;
+                return (
+                  <article key={room.room_id} data-room-card={room.room_id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                    <div className="relative h-52 sm:h-60">
+                      <Image src={description?.img ?? "/images/image3.jpeg"} alt={description?.name[lang] ?? room.room_id} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
+                      <span className="absolute left-4 top-4 rounded-full bg-white px-3 py-1.5 text-sm font-semibold text-slate-900">{lang === "mn" ? "Өрөө" : "Room"} {room.room_id}</span>
+                    </div>
+                    <div className="space-y-4 p-5 sm:p-6">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <h3 className="font-serif text-2xl text-slate-900">{roomNames.get(room.category_id) ?? room.category_id}</h3>
+                          <p className="mt-1 text-sm text-slate-600">{available}/{room.beds.length} {lang === "mn" ? "ор сул" : "beds available"}</p>
                         </div>
-                      );
-                    })}
-                  </dl>
-                ) : (
-                  <p role="status" className="mt-2 text-xs text-amber-800">{lang === "mn" ? "Үнийг баталгаажуулж чадсангүй." : "Rates could not be verified."}</p>
-                )}
-                <p className="mt-2 text-xs text-slate-500">
-                  {lang === "mn"
-                    ? "Үнэ нь мэдээллийн сангийн одоогийн ангиллын жагсаалт. Эцсийн үнийг ажилтан зочдын бүрэлдэхүүнээр баталгаажуулна."
-                    : "Rates are the current database catalogue for this category. Staff must confirm the final price for the guest mix."}
-                </p>
-              </div>
-              <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {room.beds.map(bed => {
-                  const selected = selectedBedIds.includes(bed.bed_id);
-                  const selectable = bed.state === "available" &&
-                    room.gender_matches_selection &&
-                    !room.gender_conflict &&
-                    !room.allocation_required &&
-                    (!selectedRoomId || selectedRoomId === room.room_id) &&
-                    (selected || selectedBedIds.length < guestCount);
-                  return (
-                    <li key={bed.bed_id}>
-                      <button
-                        type="button"
-                        role="checkbox"
-                        aria-checked={selected}
-                        aria-label={`${bed.bed_id}: ${bedStateLabel(bed.state, lang)}`}
-                        disabled={!selectable && !selected}
-                        onClick={() => toggleBed(room.room_id, bed.bed_id)}
-                        className={`w-full rounded-lg border p-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal ${selected ? "border-teal bg-teal/5" : "border-slate-200"} disabled:cursor-not-allowed disabled:opacity-70`}
-                      >
-                        <span className="flex items-center justify-between gap-2">
-                          <span className="font-medium text-slate-800">{bed.bed_id}</span>
-                          <span aria-hidden="true" className={`flex h-5 w-5 items-center justify-center rounded border text-xs ${selected ? "border-teal bg-teal text-white" : "border-slate-400"}`}>
-                            {selected ? "✓" : ""}
-                          </span>
-                        </span>
-                        <span className={`mt-1 block text-sm ${bed.state === "available" ? "text-emerald-700" : "text-slate-600"}`}>
-                          {bedStateLabel(bed.state, lang)}
-                        </span>
-                        {bed.occupied_now && bed.occupant_gender && (
-                          <span className="mt-1 block text-xs text-slate-500">
-                            {genderLabel(bed.occupant_gender, lang)}
-                            {` · ${departureLabel(bed, lang)}`}
-                          </span>
-                        )}
+                        <p className="text-xl font-semibold text-slate-900">{rate === null ? "—" : formatMntAmount(rate)}<span className="mt-1 block text-right text-xs font-normal text-slate-600">{lang === "mn" ? "1 насанд хүрэгч / шөнө" : "per adult / night"}</span></p>
+                      </div>
+                      <p className="text-sm leading-6 text-slate-600">{description?.desc[lang]}</p>
+                      <ul className="flex flex-wrap gap-2 text-xs text-slate-700">
+                        {description?.amenities.slice(0, 3).map(item => <li key={item.en} className="rounded-full bg-slate-100 px-3 py-1.5">{item[lang]}</li>)}
+                      </ul>
+                      <p className="text-sm leading-6 text-slate-600">{lang === "mn" ? "Хоол, багцад багтах үйлчилгээг хүлээн авалтаас тодруулна. Эмчилгээг эмчтэй зөвлөлдөн сонгоно." : "Confirm meals and package inclusions with reception. Treatments depend on a clinical consultation."}</p>
+                      <div className="flex flex-wrap items-baseline justify-between gap-2 border-t border-slate-100 pt-4">
+                        <p className="text-sm text-slate-600">{guestCount} {lang === "mn" ? "зочин" : "adult(s)"} · {policy?.stay_nights} {lang === "mn" ? "шөнө" : "nights"}</p>
+                        <p className="text-lg font-semibold text-slate-900">{rate === null ? (lang === "mn" ? "Үнэ тодруулах" : "Rate unavailable") : formatMntAmount((BigInt(rate) * BigInt(guestCount) * BigInt(policy?.stay_nights ?? 7)).toString())}</p>
+                      </div>
+                      <button type="button" data-select-room={room.room_id} disabled={!canChoose} onClick={() => { setSelectedRoomId(room.room_id); setSelectedBedIds([]); }} className="min-h-12 w-full rounded-lg bg-teal px-4 py-3 text-base font-semibold text-white disabled:bg-slate-100 disabled:text-slate-600">
+                        {canChoose ? (lang === "mn" ? "Энэ өрөөний ор сонгох" : "Choose beds in this room") : (lang === "mn" ? "Энэ сонголтод боломжгүй" : "Unavailable for this selection")}
                       </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
-        </div>
-
-        {selectedBedIds.length > 0 && (
-          <section aria-live="polite" className="rounded-2xl border border-teal/30 bg-white p-5">
-            <h2 className="font-semibold text-slate-900">{lang === "mn" ? "Сонгосон ор" : "Selected beds"}</h2>
-            <p className="mt-1 text-sm text-slate-700">{selectedBedIds.join(", ")} · {selectedBedIds.length}/{guestCount}</p>
-            <p className="mt-2 text-sm text-amber-800">
-              {lang === "mn"
-                ? "Энэ нь зөвхөн урьдчилсан сонголт бөгөөд захиалга үүсгэхгүй, орныг барихгүй. Онлайн захиалга хаалттай."
-                : "This is a preview selection only. It does not create a booking or hold beds. Online booking is closed."}
-            </p>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+            {rooms.length === 0 && <p className="rounded-xl bg-white p-5 text-slate-600">{lang === "mn" ? "Өрөөний мэдээлэл ирсэнгүй. Дахин шалгана уу." : "No room information was returned. Please retry."}</p>}
           </section>
         )}
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-5">
-          <h2 className="font-semibold text-slate-900">{lang === "mn" ? "Байрлах болон төлбөрийн мэдээлэл" : "Stay and payment information"}</h2>
-          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-600">
-            <li>{lang === "mn" ? `Одоогийн системийн дүрэм: ${policy?.stay_nights ?? 7} шөнө; ${policy?.advance_months ?? 3} сар хүртэл урьдчилан сонгоно.` : `Current system rules: ${policy?.stay_nights ?? 7} nights; dates can be selected up to ${policy?.advance_months ?? 3} months ahead.`}</li>
-            <li>{lang === "mn" ? "Одоогийн өрөөний мэдээлэлд халуун, хүйтэн ус, хувийн ариун цэврийн өрөө, телевиз, Wi-Fi гэж заасан." : "Existing room information lists hot and cold water, a private bathroom, TV, and Wi-Fi."}</li>
-            <li>{lang === "mn" ? "QPay болон онлайн төлбөр холбогдоогүй. Онлайн төлбөр амжилттай болсон гэж үзэхгүй. Хүлээн авалтад бэлэн мөнгө эсвэл ажилтнаар баталгаажуулах банкны шилжүүлэг." : "QPay and online payments are not connected. No online payment can be completed. Reception accepts cash or bank transfers verified by staff."}</li>
-            <li className="text-amber-800">{lang === "mn" ? "Цуцлалт, буцаалтын нөхцөл нийтлэхээр баталгаажаагүй. Захиалга нээхээс өмнө бизнесийн эзэн энэ нөхцөлийг батлах шаардлагатай." : "Cancellation and refund terms have not been approved for publication. The business owner must confirm them before bookings open."}</li>
-          </ul>
-        </section>
+        {selectedRoom && !dateError && !loading && (
+          <section id="room-beds" aria-labelledby="choose-beds-heading" className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
+            <button type="button" onClick={chooseAnotherRoom} className="mb-5 min-h-11 text-sm font-semibold text-teal underline">← {lang === "mn" ? "Өрөөнүүд рүү буцах" : "Back to rooms"}</button>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-teal">{lang === "mn" ? "Өрөө" : "Room"} {selectedRoom.room_id} · {roomNames.get(selectedRoom.category_id)}</p>
+                <h2 id="choose-beds-heading" className="mt-2 text-2xl font-semibold text-slate-900">{lang === "mn" ? "3. Зочин бүрт нэг ор сонгох" : "3. Choose one bed per guest"}</h2>
+              </div>
+              <p aria-live="polite" className="rounded-full bg-teal/10 px-4 py-2 font-semibold text-teal-900">{selectedBedIds.length} / {guestCount} {lang === "mn" ? "ор сонгосон" : "beds selected"}</p>
+            </div>
+            <p className="mt-3 text-base text-slate-600">{checkIn} — {checkOut} · {genderLabel(gender || null, lang)}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{lang === "mn" ? "Зөвхөн сул гэж тэмдэглэсэн ор сонгоно. Сонголт нь захиалга хадгалах хүртэл орныг түр барихгүй." : "Choose beds marked available. Your selection is not held until the request is saved."}</p>
+            <ul className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {selectedRoom.beds.map(bed => {
+                const selected = selectedBedIds.includes(bed.bed_id);
+                const selectable = bed.state === "available" && selectedRoom.gender_matches_selection && !selectedRoom.gender_conflict && !selectedRoom.allocation_required && (selected || selectedBedIds.length < guestCount);
+                return (
+                  <li key={bed.bed_id}>
+                    <button type="button" role="checkbox" aria-checked={selected} aria-label={`${lang === "mn" ? "Өрөө" : "Room"} ${selectedRoom.room_id}, ${lang === "mn" ? "ор" : "bed"} ${bed.bed_id}, ${selected ? (lang === "mn" ? "сонгосон" : "selected") : bedStateLabel(bed.state, lang)}`} disabled={!selectable && !selected} onClick={() => toggleBed(selectedRoom.room_id, bed.bed_id)}
+                      className={`min-h-28 w-full rounded-xl border p-4 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal ${selected ? "border-teal bg-teal text-white" : selectable ? "border-teal/40 bg-white text-slate-900" : "border-slate-200 bg-slate-100 text-slate-600"}`}>
+                      <span className="flex items-center justify-between gap-2 text-base font-semibold"><span>{bed.bed_id}</span><span aria-hidden="true">{selected ? "✓" : "○"}</span></span>
+                      <span className="mt-2 block text-sm leading-5">{selected ? (lang === "mn" ? "Сонгосон" : "Selected") : bedStateLabel(bed.state, lang)}</span>
+                      {bed.occupied_now && bed.occupant_gender && <span className="mt-2 block text-xs">{genderLabel(bed.occupant_gender, lang)} · {departureLabel(bed, lang)}</span>}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            <div aria-live="polite" className="mt-6 rounded-xl bg-[#f6f5f1] p-5">
+              <div className="flex flex-wrap justify-between gap-3">
+                <div><p className="text-sm text-slate-600">{lang === "mn" ? "Таны сонголт" : "Your selection"}</p><p className="mt-1 font-semibold text-slate-900">{selectedBedIds.join(", ") || (lang === "mn" ? "Ор сонгоно уу" : "Choose your beds")}</p></div>
+                <div><p className="text-sm text-slate-600">{lang === "mn" ? "Өрөөний үнийн нийлбэр" : "Room-rate total"}</p><p className="mt-1 text-xl font-semibold text-slate-900">{nightlyRate === null ? "—" : formatMntAmount((BigInt(nightlyRate) * BigInt(guestCount) * BigInt(policy?.stay_nights ?? 7)).toString())}</p></div>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-slate-600">{lang === "mn" ? "Хоол, эмчилгээ болон багцад багтах зүйлсийг хүлээн авалтаас тодруулна уу. Дараагийн алхамд сервер үнэ, хүртээмжийг дахин шалгана." : "Confirm meals, treatments and package inclusions with reception. The next step verifies the price and availability again."}</p>
+              {selectionReady ? <Link href={`/booking/summary?${new URLSearchParams({ roomId: selectedRoomId, checkIn, checkOut, gender, bedIds: selectedBedIds.join(",") })}`} className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-teal px-5 py-3 text-base font-semibold text-white sm:w-auto">{lang === "mn" ? "4. Хураангуй, нийт үнэ шалгах" : "4. Review your stay & total"}</Link>
+                : <button type="button" disabled className="mt-4 min-h-12 w-full rounded-lg bg-slate-200 px-5 py-3 text-base font-semibold text-slate-600 sm:w-auto">{lang === "mn" ? `${guestCount} ор сонгоод үргэлжлүүлнэ үү` : `Select ${guestCount} bed(s) to continue`}</button>}
+            </div>
+          </section>
+        )}
+        <BookingFAQ />
       </div>
     </main>
   );

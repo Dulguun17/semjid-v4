@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { message: "User created successfully", data },
+      { message: "User created successfully", confirmationRequired: !data.session },
       { status: 201 }
     );
   } catch (error) {
