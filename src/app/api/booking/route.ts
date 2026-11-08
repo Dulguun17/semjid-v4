@@ -203,12 +203,120 @@ export async function POST(req: NextRequest) {
     console.log("🎉 Booking completed successfully!");
     return NextResponse.json({ success: true, ref, id: data.id, specialCode });
   } catch (err: unknown) {
+<<<<<<< Updated upstream
     console.error("❌ Booking error details:", {
       error: err,
       type: typeof err,
       constructor: err?.constructor?.name,
       message: err instanceof Error ? err.message : String(err),
       stack: err instanceof Error ? err.stack : undefined
+=======
+    console.error("Booking error:", err);
+    return NextResponse.json({ error: "Failed to save booking" }, { status: 500 });
+  }
+}
+
+async function sendAdminEmail(b: {
+  ref: string; fname: string; lname: string; phone: string; email: string;
+  checkin: string; checkout: string; roomId: string; total: number;
+  payment: string; guestDetails?: { gender: string }[]; notes: string; svcIds: string[];
+}) {
+  const RESEND_KEY = process.env.RESEND_API_KEY;
+  if (!RESEND_KEY) return;
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fbfd;padding:24px;border-radius:12px;">
+      <div style="background:#0d7377;padding:20px 24px;border-radius:8px;margin-bottom:20px;">
+        <h1 style="color:white;margin:0;font-size:20px;">🏥 Шинэ захиалга ирлээ!</h1>
+        <p style="color:rgba(255,255,255,0.7);margin:4px 0 0;font-size:13px;">Сэмжид Хужирт Рашаан Сувилал</p>
+      </div>
+      <div style="background:white;padding:20px;border-radius:8px;margin-bottom:16px;">
+        <h2 style="font-size:14px;color:#64748b;margin:0 0 12px;text-transform:uppercase;letter-spacing:1px;">Захиалгын дугаар: <span style="color:#0d7377;">${b.ref}</span></h2>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;">
+          <tr><td style="padding:8px 0;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Нэр:</td><td style="padding:8px 0;font-weight:600;color:#1e293b;border-bottom:1px solid #f1f5f9;">${b.fname} ${b.lname}</td></tr>
+          <tr><td style="padding:8px 0;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Утас:</td><td style="padding:8px 0;font-weight:600;color:#1e293b;border-bottom:1px solid #f1f5f9;">${b.phone}</td></tr>
+          ${b.guestDetails ? `<tr><td style="padding:8px 0;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Зочдын хүйс:</td><td style="padding:8px 0;color:#1e293b;border-bottom:1px solid #f1f5f9;">${b.guestDetails.map((g, i) => `Guest ${i+1}: ${g.gender}`).join("<br>")}</td></tr>` : ""}
+          <tr><td style="padding:8px 0;color:#94a3b8;border-bottom:1px solid #f1f5f9;">И-мэйл:</td><td style="padding:8px 0;color:#1e293b;border-bottom:1px solid #f1f5f9;">${b.email || "—"}</td></tr>
+          <tr><td style="padding:8px 0;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Ирэх өдөр:</td><td style="padding:8px 0;color:#1e293b;border-bottom:1px solid #f1f5f9;">${b.checkin}</td></tr>
+          <tr><td style="padding:8px 0;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Явах өдөр:</td><td style="padding:8px 0;color:#1e293b;border-bottom:1px solid #f1f5f9;">${b.checkout}</td></tr>
+          <tr><td style="padding:8px 0;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Өрөө:</td><td style="padding:8px 0;color:#1e293b;border-bottom:1px solid #f1f5f9;">${b.roomId}</td></tr>
+          <tr><td style="padding:8px 0;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Төлбөр:</td><td style="padding:8px 0;color:#1e293b;border-bottom:1px solid #f1f5f9;">${b.payment}</td></tr>
+          <tr><td style="padding:8px 0;color:#94a3b8;">Нийт дүн:</td><td style="padding:8px 0;font-weight:700;color:#0d7377;font-size:16px;">${new Intl.NumberFormat("mn-MN").format(b.total)}₮</td></tr>
+        </table>
+        ${b.notes ? `<div style="margin-top:12px;padding:12px;background:#f8fbfd;border-radius:6px;font-size:13px;color:#64748b;"><strong>Тэмдэглэл:</strong> ${b.notes}</div>` : ""}
+      </div>
+      <div style="text-align:center;">
+        <a href="${process.env.NEXT_PUBLIC_SITE_URL}/admin" style="display:inline-block;background:#0d7377;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;">Admin хэсэгт нэвтрэх →</a>
+      </div>
+      <p style="text-align:center;font-size:11px;color:#94a3b8;margin-top:16px;">Сэмжид Хужирт Рашаан Сувилал · 8802-1191</p>
+    </div>
+  `;
+
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${RESEND_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: "Semjid Booking <booking@semjid.mn>",
+      to: ADMIN_EMAIL,
+      subject: `🏥 Шинэ захиалга: ${b.fname} ${b.lname} — ${b.ref}`,
+      html,
+    }),
+  });
+}
+
+function generateSpecialCode(): string {
+  // Generate a 6-character alphanumeric code
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+async function sendSpecialCodeSMS(phone: string, specialCode: string, ref: string) {
+  const SMS_API_URL = process.env.SMS_API_URL;
+  const SMS_API_KEY = process.env.SMS_API_KEY;
+
+  if (!SMS_API_URL || !SMS_API_KEY) {
+    console.log("SMS not configured, skipping SMS send");
+    return;
+  }
+
+  const message = `Сэмжид Хужирт: Таны захиалга амжилттай баталгаажлаа. Захиалгын дугаар: ${ref}. Тусгай код: ${specialCode}. Энэ кодыг рашаан сувилалд ирэхэд ашиглана уу.`;
+
+  try {
+    // Try different API formats based on provider
+    let requestBody: any = {
+      to: phone,
+      message: message,
+    };
+
+    // Check if it's a specific provider that needs different format
+    if (SMS_API_URL.includes('mobicom')) {
+      requestBody = {
+        recipient: phone,
+        text: message,
+        sender: 'Semjid'
+      };
+    } else if (SMS_API_URL.includes('unitel')) {
+      requestBody = {
+        phone: phone,
+        content: message,
+        from: 'Semjid'
+      };
+    }
+
+    const response = await fetch(SMS_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${SMS_API_KEY}`,
+        // Some providers use API-Key header
+        "API-Key": SMS_API_KEY,
+      },
+      body: JSON.stringify(requestBody),
+>>>>>>> Stashed changes
     });
 
     const errorMsg = err instanceof Error ? err.message : String(err) || "Unknown error";
