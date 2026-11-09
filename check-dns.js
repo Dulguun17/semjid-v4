@@ -3,8 +3,6 @@
 // Quick DNS Check Script
 // Run with: node check-dns.js
 
-const https = require('https');
-
 function checkDNS(domain) {
   console.log(`🔍 Checking DNS records for ${domain}...\n`);
 

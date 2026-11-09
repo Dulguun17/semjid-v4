@@ -102,7 +102,10 @@ export default function ReviewsPage() {
       <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
         <select
           value={filter}
-          onChange={(e) => setFilter(e.target.value as any)}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (value === "all" || value === "pending" || value === "approved") setFilter(value);
+          }}
           className="px-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal"
         >
           <option value="all">Бүх санал</option>

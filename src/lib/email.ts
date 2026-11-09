@@ -1,270 +1,119 @@
-import { Resend } from "resend";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-type BookingData = {
-  ref: string;
-  fname: string;
-  lname: string;
+export type BookingNotice = {
+  reference: string;
+  firstName: string;
+  lastName: string;
   email: string;
   phone: string;
-  room_id: string;
-  check_in: string;
-  check_out: string;
+  room: string;
+  checkIn: string;
+  checkOut: string;
   guests: number;
-  total: number;
-  payment: string;
-  special_code?: string;
+  agreedPrice: number;
+  lang?: "mn" | "en";
 };
 
-// Email templates
-const bookingConfirmationEmail = (booking: BookingData) => `
-<!DOCTYPE html>
-<html>
-  <head>
-    <style>
-      body { font-family: Arial, sans-serif; color: #333; }
-      .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-      .header { background: linear-gradient(135deg, #1a4d3a 0%, #c9a96e 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; }
-      .content { background: #f9f9f9; padding: 20px; border: 1px solid #e0e0e0; }
-      .booking-details { background: white; padding: 15px; margin: 15px 0; border-left: 4px solid #1a4d3a; }
-      .detail-row { display: flex; justify-content: space-between; margin: 10px 0; }
-      .label { font-weight: bold; color: #666; }
-      .value { color: #333; }
-      .code-box { background: #1a4d3a; color: white; padding: 15px; border-radius: 6px; text-align: center; margin: 20px 0; }
-      .code-label { font-size: 12px; opacity: 0.9; }
-      .code-value { font-size: 24px; font-weight: bold; letter-spacing: 2px; }
-      .footer { text-align: center; font-size: 12px; color: #999; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0; }
-      .button { display: inline-block; background: #1a4d3a; color: white; padding: 12px 30px; border-radius: 6px; text-decoration: none; margin: 20px 0; }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <div class="header">
-        <h1>✅ Захиалга баталгаажлаа</h1>
-        <p>Сэмжид Хужирт Рашаан Сувилал</p>
-      </div>
-      
-      <div class="content">
-        <p>Сайн байна уу, ${booking.fname}!</p>
-        <p>Таны захиалга амжилттай баталгаажлаа. Дараах дараалал доор үзүүлэв:</p>
-        
-        <div class="booking-details">
-          <div class="detail-row">
-            <span class="label">Захиалгын номер:</span>
-            <span class="value">${booking.ref}</span>
-          </div>
-          <div class="detail-row">
-            <span class="label">Ирэх огноо:</span>
-            <span class="value">${new Date(booking.check_in).toLocaleDateString("mn-MN")}</span>
-          </div>
-          <div class="detail-row">
-            <span class="label">Явах огноо:</span>
-            <span class="value">${new Date(booking.check_out).toLocaleDateString("mn-MN")}</span>
-          </div>
-          <div class="detail-row">
-            <span class="label">Өрөө:</span>
-            <span class="value">${booking.room_id}</span>
-          </div>
-          <div class="detail-row">
-            <span class="label">Зочдын тоо:</span>
-            <span class="value">${booking.guests}</span>
-          </div>
-          <div class="detail-row">
-            <span class="label">Нийт дүн:</span>
-            <span class="value">₮${booking.total.toLocaleString()}</span>
-          </div>
-          <div class="detail-row">
-            <span class="label">Төлбөрийн хэлбэр:</span>
-            <span class="value">${
-              booking.payment === "cash"
-                ? "Бэлэн төлбөр"
-                : booking.payment === "bank"
-                  ? "Банк шилжүүлэх"
-                  : "QPay"
-            }</span>
-          </div>
-        </div>
+export type EmailMessage = {
+  to: string;
+  subject: string;
+  html: string;
+};
 
-        ${
-          booking.special_code
-            ? `
-        <div class="code-box">
-          <div class="code-label">Таны нэвтрэх код (Check-in):</div>
-          <div class="code-value">${booking.special_code}</div>
-          <p style="margin-top: 10px; font-size: 12px; opacity: 0.9;">Ирэх үеэр энэ кодыг ашиглана уу</p>
-        </div>
-        `
-            : ""
-        }
+export type EmailTransport = (message: EmailMessage) => Promise<void>;
 
-        <p><strong>Дараагийн алхам:</strong></p>
-        <ul>
-          <li>📧 Энэ имэйлийг хадгалаарай - энэ таны баталгаа</li>
-          <li>📞 Холбоо барих: +976 88021191</li>
-          <li>🛏️ Сувилалын өмнө дахин батлуулна</li>
-          <li>📄 Хэрэв шаардлагатай бол эмчилгээний лавлагаа авчрахыг мартаж болохгүй!</li>
-        </ul>
+const escapeHtml = (value: string) => value.replace(/[&<>"']/g, character => ({
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  "\"": "&quot;",
+  "'": "&#39;",
+}[character] ?? character));
 
-        <p>Хэрэв та захиалгаа солих эсвэл цуцлахыг хүсвэл манай холбогдох хэсэгтэй холбоо барина уу.</p>
-      </div>
-
-      <div class="footer">
-        <p>Сэмжид Хужирт Рашаан Сувилал | www.semjid-khujirt.mn</p>
-        <p>© 2026 | Бүх эрх хамгаалагдсан</p>
-      </div>
-    </div>
+const layout = (title: string, body: string) => `
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+  <body style="font-family:Arial,sans-serif;color:#1f2937;line-height:1.6">
+    <main style="max-width:600px;margin:0 auto;padding:24px">
+      <h1 style="color:#115e59">${title}</h1>
+      ${body}
+      <hr style="border:0;border-top:1px solid #e5e7eb;margin:24px 0">
+      <p style="color:#64748b;font-size:13px">Semjid Khujirt · Online booking is currently closed.</p>
+    </main>
   </body>
-</html>
-`;
+</html>`;
 
-const adminNotificationEmail = (booking: BookingData) => `
-<!DOCTYPE html>
-<html>
-  <head>
-    <style>
-      body { font-family: Arial, sans-serif; color: #333; }
-      .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-      .header { background: #1a4d3a; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
-      .content { background: #f9f9f9; padding: 20px; border: 1px solid #e0e0e0; }
-      .booking-details { background: white; padding: 15px; margin: 15px 0; border-left: 4px solid #c9a96e; }
-      .detail-row { display: flex; justify-content: space-between; margin: 10px 0; }
-      .label { font-weight: bold; color: #666; }
-      .value { color: #333; }
-      .footer { text-align: center; font-size: 12px; color: #999; margin-top: 20px; }
-      .status { display: inline-block; background: #fbbf24; color: #78350f; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <div class="header">
-        <h1>📋 Шинэ захиалга хүлээгдэж байна</h1>
-        <span class="status">ШИНЭ</span>
-      </div>
-      
-      <div class="content">
-        <p>Админ панель: ${booking.ref}</p>
-        
-        <div class="booking-details">
-          <div class="detail-row">
-            <span class="label">Нэр:</span>
-            <span class="value">${booking.fname} ${booking.lname}</span>
-          </div>
-          <div class="detail-row">
-            <span class="label">Утас:</span>
-            <span class="value">${booking.phone}</span>
-          </div>
-          <div class="detail-row">
-            <span class="label">И-мэйл:</span>
-            <span class="value">${booking.email}</span>
-          </div>
-          <div class="detail-row">
-            <span class="label">Өрөө:</span>
-            <span class="value">${booking.room_id}</span>
-          </div>
-          <div class="detail-row">
-            <span class="label">${new Date(booking.check_in).toLocaleDateString("mn-MN")} → ${new Date(booking.check_out).toLocaleDateString("mn-MN")}</span>
-            <span class="value">${Math.round((new Date(booking.check_out).getTime() - new Date(booking.check_in).getTime()) / 86400000)} шөнө</span>
-          </div>
-          <div class="detail-row">
-            <span class="label">Нийт дүн:</span>
-            <span class="value">₮${booking.total.toLocaleString()}</span>
-          </div>
-          <div class="detail-row">
-            <span class="label">Төлбөр:</span>
-            <span class="value">${booking.payment}</span>
-          </div>
-        </div>
-
-        <p><strong>ADMIN БАУЖ НЭЭХ:</strong></p>
-        <a href="https://semjid-khujirt.mn/admin/guests" style="display: inline-block; background: #1a4d3a; color: white; padding: 12px 30px; border-radius: 6px; text-decoration: none;">Админ панель руу орох</a>
-      </div>
-
-      <div class="footer">
-        <p>Энэ имэйл автоматаар илгээгдлээ. Админ системээс</p>
-      </div>
-    </div>
-  </body>
-</html>
-`;
-
-/** Send booking confirmation to guest */
-export async function sendBookingConfirmationEmail(booking: BookingData) {
-  try {
-    if (!booking.email) {
-      console.warn("⚠️ No guest email provided");
-      return;
-    }
-
-    // Send to the actual guest email address
-    const recipientEmail = booking.email;
-
-    const response = await resend.emails.send({
-      from: "Сэмжид Хужирт Захиалга <booking@resend.dev>",
-      to: recipientEmail,
-      subject: `✅ Захиалга баталгаажлаа - ${booking.ref} | Сэмжид Хужирт`,
-      html: bookingConfirmationEmail(booking),
-    });
-
-    console.log(`✅ Booking confirmation email sent to guest ${recipientEmail}`, response);
-  } catch (error) {
-    console.error("❌ Failed to send booking confirmation email:", error);
-    throw error;
-  }
+function bookingSummary(booking: BookingNotice) {
+  return `
+    <dl>
+      <dt>Reference</dt><dd>${escapeHtml(booking.reference)}</dd>
+      <dt>Room</dt><dd>${escapeHtml(booking.room)}</dd>
+      <dt>Stay</dt><dd>${escapeHtml(booking.checkIn)} – ${escapeHtml(booking.checkOut)}</dd>
+      <dt>Guests</dt><dd>${booking.guests}</dd>
+      <dt>Agreed price</dt><dd>${booking.agreedPrice.toLocaleString("en-US")} MNT</dd>
+    </dl>`;
 }
 
-/** Send admin notification of new booking */
-export async function sendAdminNotificationEmail(booking: BookingData) {
-  try {
-    const adminEmail = process.env.ADMIN_EMAIL;
-    if (!adminEmail) {
-      console.warn("⚠️ ADMIN_EMAIL not configured in .env.local");
-      return;
-    }
-
-    const response = await resend.emails.send({
-      from: "Сэмжид Хужирт Админ <admin@resend.dev>",
-      to: adminEmail, // This should work in testing mode
-      subject: `📋 Шинэ захиалга: ${booking.ref} - ${booking.fname} ${booking.lname}`,
-      html: adminNotificationEmail(booking),
-    });
-
-    console.log(`✅ Admin notification email sent to ${adminEmail}`, response);
-  } catch (error) {
-    console.error("❌ Failed to send admin notification email:", error);
-    throw error;
-  }
+export function renderCustomerBookingNotice(booking: BookingNotice) {
+  const mn = booking.lang === "mn";
+  const firstName = escapeHtml(booking.firstName);
+  return layout(
+    mn ? "Захиалгын хүсэлт — хүлээгдэж байна" : "Reservation request — pending",
+    `<p>${mn ? `Сайн байна уу, ${firstName}!` : `Hello ${firstName},`}</p>
+     <p>${mn
+       ? "Энэ нь зөвхөн хүсэлт хүлээн авсан мэдэгдэл. Ажилтан баталгаажуулах хүртэл байрлах захиалга баталгаажаагүй."
+       : "This message is a request receipt only. Your stay is not confirmed until staff confirms it."}</p>
+     ${bookingSummary(booking)}
+     <p>${mn
+       ? "Онлайн төлбөр боломжгүй. Цахимаар мөнгө бүү шилжүүлнэ үү. Хүлээн авалтаас бэлэн мөнгө эсвэл ажилтнаар баталгаажуулах банкны шилжүүлгийн талаар асууна уу."
+       : "Online payment is unavailable. Do not send money online. Ask reception about cash or a bank transfer verified by staff."}</p>
+     <p>${mn
+       ? "Цуцлалт, буцаалтын нөхцөлийг хүсэлтийг эцэслэхээс өмнө сувиллаас баталгаажуулна."
+       : "Cancellation and refund terms must be confirmed with the center before the request can be finalized."}</p>`
+  );
 }
 
-/** Send chat message notification to admin */
-export async function sendChatNotificationEmail(
-  guestName: string,
-  message: string,
-  sessionId: string
-) {
-  try {
-    const adminEmail = process.env.ADMIN_EMAIL;
-    if (!adminEmail) {
-      console.warn("⚠️ ADMIN_EMAIL not configured");
-      return;
-    }
+export function renderStaffBookingNotice(booking: BookingNotice) {
+  return layout(
+    "Reservation request needs review",
+    `<p>Reference: ${escapeHtml(booking.reference)}</p>
+     <p>Guest: ${escapeHtml(booking.firstName)} ${escapeHtml(booking.lastName)}</p>
+     <p>Phone: ${escapeHtml(booking.phone)} · Email: ${escapeHtml(booking.email)}</p>
+     ${bookingSummary(booking)}
+     <p>Review and confirm this request in the staff workspace. No payment is implied.</p>`
+  );
+}
 
-    const response = await resend.emails.send({
-      from: "Сэмжид Хужирт Чат <chat@resend.dev>",
-      to: adminEmail,
-      subject: `💬 Шинэ чат мессеж: ${guestName}`,
-      html: `
-        <h2>Шинэ мессеж ирлээ</h2>
-        <p><strong>Зочин:</strong> ${guestName}</p>
-        <p><strong>Мессеж:</strong></p>
-        <blockquote>${message}</blockquote>
-        <a href="https://semjid-khujirt.mn/admin/chat" style="display: inline-block; background: #1a4d3a; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; margin-top: 15px;">Чат панель руу орох</a>
-      `,
-    });
+export function renderStaffChatNotice(guestName: string, message: string) {
+  return layout(
+    "New customer message",
+    `<p>Guest: ${escapeHtml(guestName)}</p><blockquote>${escapeHtml(message)}</blockquote>`
+  );
+}
 
-    console.log(`✅ Chat notification email sent to ${adminEmail}`, response);
-    console.log("✅ Chat notification email sent to admin");
-  } catch (error) {
-    console.error("❌ Failed to send chat notification email:", error);
-  }
+export function createLocalCaptureTransport() {
+  const messages: EmailMessage[] = [];
+  return {
+    send: async (message: EmailMessage) => { messages.push({ ...message }); },
+    getMessages: () => messages.map(message => ({ ...message })),
+  };
+}
+
+export function createBookingNotificationTemplates(transport: EmailTransport) {
+  return {
+    sendCustomerNotice: (booking: BookingNotice) => transport({
+      to: booking.email,
+      subject: `Reservation request pending — ${booking.reference}`,
+      html: renderCustomerBookingNotice(booking),
+    }),
+    sendStaffNotice: (booking: BookingNotice, recipient: string) => transport({
+      to: recipient,
+      subject: `Reservation request needs review — ${booking.reference}`,
+      html: renderStaffBookingNotice(booking),
+    }),
+    sendChatNotice: (recipient: string, guestName: string, message: string) => transport({
+      to: recipient,
+      subject: "New customer message",
+      html: renderStaffChatNotice(guestName, message),
+    }),
+  };
 }

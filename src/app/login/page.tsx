@@ -6,11 +6,12 @@ import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { useLang } from "@/lib/lang-context";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { safeInternalRedirect } from "@/lib/auth-navigation";
 
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirect") || "/profile";
+  const redirectTo = safeInternalRedirect(searchParams.get("redirect"));
   const { lang } = useLang();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,13 +24,14 @@ function LoginContent() {
     setLoading(true);
     setError("");
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (error) {
-      setError(lang === "mn" ? "И-мэйл эсвэл нууц үг буруу байна." : "Invalid email or password.");
-      setLoading(false);
-    } else {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
       router.push(redirectTo);
+    } catch {
+      setError(lang === "mn" ? "Нэвтэрч чадсангүй. Мэдээлэл, сүлжээгээ шалгаад дахин оролдоно уу." : "Could not sign in. Check your details and connection, then try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -91,6 +93,7 @@ function LoginContent() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
+                aria-label={lang === "mn" ? (showPassword ? "Нууц үг нуух" : "Нууц үг харах") : (showPassword ? "Hide password" : "Show password")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -108,7 +111,7 @@ function LoginContent() {
 
           <div className="text-center">
             <Link
-              href={`/signup${redirectTo !== "/profile" ? `?redirect=${redirectTo}` : ""}`}
+              href={`/signup${redirectTo !== "/profile" ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`}
               className="text-[13px] text-teal hover:text-teal-dark transition-colors"
             >
               {lang === "mn" ? "Бүртгэлгүй юу? Бүртгүүлэх" : "Don't have an account? Sign up"}

@@ -1,6 +1,8 @@
-# 🚀 Dynamic Website Setup Guide
+# Dynamic Website and Workspace Setup
 
-Your website is now fully dynamic! Here's everything you need to know to manage your content through the admin panel.
+The admin area now has separate staff and CEO workspaces. Complete the role migration and assign verified accounts before expecting an existing administrator to access either workspace. Full role assignment and permission checks are in [ADMIN_WORKSPACE_ROLES_SETUP.md](./ADMIN_WORKSPACE_ROLES_SETUP.md).
+
+The online booking flow remains closed. This guide describes existing administrative features, not permission to reopen bookings.
 
 ## 📋 What You Can Now Control
 
@@ -37,6 +39,10 @@ Your website is now fully dynamic! Here's everything you need to know to manage 
 
 This creates the `rooms` table for dynamic pricing.
 
+Do not run `supabase/schema.sql` against a database with existing records; that file drops application tables. After any required table setup, apply `supabase/workspace_roles_migration.sql` before deploying the workspace changes. Do not rerun older SQL setup scripts afterward because they may recreate legacy authenticated-user policies. The role migration preserves records and replaces workspace table policies.
+
+The current data-preserving migration sequence, including booking, payment, CEO reporting, and customer booking ownership, is maintained in [ADMIN_WORKSPACE_ROLES_SETUP.md](./ADMIN_WORKSPACE_ROLES_SETUP.md). Do not apply migrations to production as part of local verification.
+
 ### Step 2: Create Storage Buckets
 
 Your Supabase needs two storage buckets for files:
@@ -56,14 +62,15 @@ Your Supabase needs two storage buckets for files:
 ### Step 3: Test it Works
 
 1. **Login** to admin panel: `/admin/login`
-2. Go to **Settings** (`/admin/settings`)
+2. Verify that the account is explicitly assigned `staff` and manager access in `workspace_roles` using the secure instructions.
+3. Go to **Settings** (`/admin/settings`) as an explicitly assigned manager
    - Upload any PDF file as a test referral letter
    - You should see upload success message
-3. Go to **Content** (`/admin/content`)
+4. Go to **Content** (`/admin/content`)
    - Edit a section title
    - Click Save
    - Check that it saved successfully
-4. Go to **Rooms** (`/admin/rooms-management`)
+5. Go to **Rooms** (`/admin/rooms-management`)
    - Edit a room price
    - Upload a new image
    - Click Save
@@ -71,23 +78,22 @@ Your Supabase needs two storage buckets for files:
 ### Step 4: Verify on Public Site
 
 After uploading content:
-1. Check `/booking` page - should show your referral letter download link
+1. `/booking` remains closed and displays a closure notice; the existing referral letter setting is retained but is not shown in the closed booking flow.
 2. Check `/rooms` page - should show updated prices and images
 3. Check `/about` page - should show updated About section
 4. Homepage should show all updated content
 
-## 📱 Admin Panel Structure
+## 📱 Workspace Structure
 
 ```
-Admin Dashboard (/)
-├── Хяналтын самбар (Overview)
-├── Аналитик (Analytics)
-├── Захиалгын календар (Booking Calendar)
-├── Зочид (Guests List)
-├── Өрөөний удирдалга (Rooms Management)  ← Room prices & images
-├── Контент удирдах (Content Editor)     ← All website text & images
-├── Тохиргоо (Settings)                  ← Referral letters & global settings
-└── Чат (Chat Support)
+Staff Workspace (/admin)
+├── Bookings, calendar, and room availability
+├── Client contacts and messages
+├── Reception payment ledger, separate from booking status
+└── Manager-only settings, content, and room pricing
+
+CEO Workspace (/admin/ceo)
+└── Read-only aggregate business report; not accounting profit or recognized revenue
 ```
 
 ## 🎨 Making Changes
@@ -111,13 +117,15 @@ Admin Dashboard (/)
 2. Drag & drop PDF or click to browse
 3. File automatically appears on `/booking` page
 
-## 🔐 Security
+## 🔐 Access and Data
 
-- All admin pages require authentication
-- Only authenticated users can make changes
-- Database uses Row Level Security (RLS)
-- Files are stored in Supabase Storage
-- All changes are logged with timestamps
+- Public signups are assigned the `customer` role by a database trigger; auth metadata cannot grant staff or CEO access.
+- Staff and CEO roles are assigned by an authorized operator in Supabase SQL Editor. Settings, content, and room pricing changes additionally require an explicitly designated staff manager.
+- Admin routes, service-role upload/chat endpoints, and direct table access enforce role checks. A signed-in customer is not an administrator.
+- Booking value is not proof of money received. Only completed ledger receipts and refunds are reported as cash activity.
+- Customer booking history is restricted by a database-owned account ID, not an email or guessed reference. Existing records are not auto-linked.
+- Public booking submission remains closed. The bed availability preview is test-only and forcibly unavailable in production. QPay is not connected.
+- See [ADMIN_WORKSPACE_ROLES_SETUP.md](./ADMIN_WORKSPACE_ROLES_SETUP.md) for role assignment, migration sequencing, and test account checks.
 
 ## 💾 Where Data is Stored
 
@@ -195,4 +203,4 @@ Check these files for technical details:
 
 ---
 
-**Your website is now fully dynamic and ready to manage! 🎉**
+**This is a pre-launch working copy. Database permissions, provider setup, business terms, and end-to-end checks remain outstanding.**

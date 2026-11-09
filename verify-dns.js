@@ -59,7 +59,7 @@ export async function verifyDNSRecords() {
           console.log("   DNS records missing. Add them in GoDaddy DNS settings.");
         }
 
-      } catch (dnsError) {
+      } catch {
         console.log("   Could not check DNS records automatically.");
         console.log("   Use online DNS checker or wait for propagation.");
       }

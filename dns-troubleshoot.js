@@ -3,8 +3,6 @@
 // DNS Troubleshooting Script
 // Run with: node dns-troubleshoot.js
 
-const https = require('https');
-
 function troubleshootDNS() {
   console.log('🔧 DNS TROUBLESHOOTING FOR semjidkhujirt.com\n');
 

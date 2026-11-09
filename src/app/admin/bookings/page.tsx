@@ -8,8 +8,6 @@ import {
   Star,
   Filter,
   Loader2,
-  Trash2,
-  Reply,
 } from "lucide-react";
 
 type Review = {
@@ -116,7 +114,10 @@ export default function ReviewsManagementPage() {
           <Filter size={18} className="text-slate-500" />
           <select
             value={filter}
-            onChange={(e) => setFilter(e.target.value as any)}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === "all" || value === "pending" || value === "approved") setFilter(value);
+            }}
             className="px-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal"
           >
             <option value="all">Бүх санал</option>

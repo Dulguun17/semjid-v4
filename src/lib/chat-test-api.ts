@@ -1,3 +1,5 @@
+import { workspaceAuthorizationHeaders } from "@/lib/workspace-api";
+
 /**
  * Chat & Booking Test API - Manual Testing Guide
  * 
@@ -52,7 +54,7 @@ async function sendCustomerMessage(issue: string) {
   });
 
   const data = await response.json();
-  console.log(`✅ Customer message sent:`, data);
+  console.log("Customer test message request completed.");
   return data;
 }
 
@@ -63,20 +65,15 @@ async function sendCustomerMessage(issue: string) {
 // 2. ADMIN RESPONSE PATTERNS - Quick Confirmation
 // ================================================================
 
-const quickConfirmationResponses = {
-  temperature: "Яасч байна? Даруй халаагч асааж өгье. 5 минутаар хүргэнэ!",
-  simple: "Яасч байна! Даруй засна.",
-  urgent: "Чандалгүй асуух асуулт биз. Шууд хүргэнэ.",
-};
-
 /**
  * POST /api/chat/reply
  * Admin sends a QUICK response (immediate acknowledgment)
  */
 async function sendQuickResponse(sessionId: string, responseText: string) {
+  const headers = await workspaceAuthorizationHeaders();
   const response = await fetch("/api/chat/reply", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { ...headers, "Content-Type": "application/json" },
     body: JSON.stringify({
       sessionId,
       message: responseText,
@@ -84,11 +81,11 @@ async function sendQuickResponse(sessionId: string, responseText: string) {
   });
 
   const data = await response.json();
-  console.log(`✅ Quick response sent:`, data);
+  console.log("Staff test response request completed.");
   return data;
 }
 
-// Example: Test immediate response to temperature issue
+// Example: call sendQuickResponse with a staff-authenticated session and message.
 // await sendQuickResponse("session-customer-1", quickConfirmationResponses.temperature);
 
 // ================================================================
@@ -242,7 +239,7 @@ async function sendEscalation(sessionId: string, escalationType: string) {
   await sendQuickResponse(sessionId, escalation);
 
   // Update status
-  console.log(`📤 Ticket escalated for session: ${sessionId}`);
+  console.log("Test escalation request completed.");
 }
 
 // ================================================================
@@ -254,16 +251,22 @@ async function sendEscalation(sessionId: string, escalationType: string) {
  * Retrieve all messages in a chat session
  */
 async function getChatHistory(sessionId: string) {
-  const response = await fetch(`/api/chat?sessionId=${sessionId}`);
+  const headers = await workspaceAuthorizationHeaders();
+  const response = await fetch(`/api/chat?sessionId=${encodeURIComponent(sessionId)}`, { headers });
   const data = await response.json();
 
-  console.log(`📋 Chat history for ${sessionId}:`);
-  data.messages.forEach((msg: any) => {
-    const sender = msg.sender === "admin" ? "👨‍💼 Admin" : "👤 Customer";
-    console.log(`  ${sender}: ${msg.message}`);
+  const messages: unknown = data.messages;
+  if (!Array.isArray(messages)) {
+    throw new Error("Chat history response did not contain a message list.");
+  }
+  messages.forEach((msg: unknown) => {
+    if (!msg || typeof msg !== "object" || !("sender" in msg) || !("message" in msg)) {
+      throw new Error("Chat history response contained an invalid message.");
+    }
   });
+  console.log("Chat history response validated; message contents withheld.");
 
-  return data.messages;
+  return messages;
 }
 
 // ================================================================
@@ -394,7 +397,7 @@ const testSuite = {
 // ================================================================
 
 if (typeof window !== "undefined") {
-  (window as any).testSuite = testSuite;
+  (window as Window & { testSuite?: typeof testSuite }).testSuite = testSuite;
   console.log("✅ Test suite loaded. Use testSuite.[functionName]() to run tests");
   console.log("   Example: testSuite.test1_quickResponse()");
   console.log("   Or: testSuite.testAll() to run everything");

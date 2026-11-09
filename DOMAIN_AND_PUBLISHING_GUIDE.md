@@ -1,3 +1,9 @@
+# Legacy production guide
+
+This guide contains historical production-oriented values and steps. Do not use
+it to configure staging; follow [STAGING_DEPLOYMENT_PLAN.md](./STAGING_DEPLOYMENT_PLAN.md)
+instead. Secret values must never be stored in this document.
+
 # 🌐 Domain Purchase & Website Publishing Guide
 
 **Complete beginner-friendly walkthrough**
@@ -77,11 +83,11 @@
 
 ```
 NEXT_PUBLIC_GA_MEASUREMENT_ID = G-KRHLKCRS6B
-NEXT_PUBLIC_SUPABASE_URL = https://qgutrcekzdaicxhjtrcx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY = eyJhbGci...
-SUPABASE_SERVICE_ROLE_KEY = eyJhbGci...
-ADMIN_EMAIL = otgonbatzolboo@gmail.com
-RESEND_API_KEY = re_T5fgCVpp_...
+NEXT_PUBLIC_SUPABASE_URL = https://<isolated-project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY = <set privately from the intended Supabase project>
+SUPABASE_SERVICE_ROLE_KEY = <set privately from the intended Supabase project>
+ADMIN_EMAIL = <authorized-contact-email>
+RESEND_API_KEY = <do not configure until notifications are approved>
 NEXT_PUBLIC_SITE_URL = https://semjid-v4.vercel.app
 ```
 
@@ -196,7 +202,7 @@ Once your domain works, setup your admin panel:
 
 1. Visit: `https://semjid-khujirt.mn/admin/login`
 2. Login:
-   - Email: `otgonbatzolboo@gmail.com`
+   - Email: `<authorized-contact-email>`
    - Password: (you set this in Supabase)
 3. Upload files:
    - Referral letter → `/admin/settings`

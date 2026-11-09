@@ -13,7 +13,7 @@ export function BookingCTA() {
           <h2 className="font-serif text-[clamp(26px,3.5vw,46px)] text-white leading-tight">
             {lang==="mn"?"Эрүүлээр урт насалъя":"Book Now &\nBegin Your Healing"}
           </h2>
-          <p className="text-[14px] text-white/50 mt-2">{lang==="mn"?"QPay, карт болон банкны шилжүүлгээр төлнө үү.":"Pay via QPay, card, or bank transfer."}</p>
+          <p className="text-[14px] text-white/50 mt-2">{lang==="mn"?"Хүлээн авалтад бэлэн төлөх эсвэл ажилтнаар баталгаажуулах банкны шилжүүлэг хийнэ.":"Pay cash at reception or use a bank transfer verified by staff."}</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 shrink-0">
           <Link href="/booking" className="text-[13px] font-medium bg-white text-teal-dark hover:bg-slate-100 px-8 py-3.5 rounded text-center no-underline transition-colors">

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/supabase";
-
-const supabaseAdmin = getSupabaseAdmin();
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { requireWorkspaceAccess } from "@/lib/workspace-auth";
 
 // Get file extension from MIME type or default to the file's extension
 function getFileExtension(file: File): string {
@@ -32,6 +31,9 @@ function getFileExtension(file: File): string {
 }
 
 export async function POST(req: NextRequest) {
+  const access = await requireWorkspaceAccess(req, { roles: ["staff"], managerOnly: true });
+  if (!access.allowed) return access.response;
+
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -50,6 +52,7 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = new Uint8Array(arrayBuffer);
 
+    const supabaseAdmin = getSupabaseAdmin();
     const { error: uploadError } = await supabaseAdmin.storage
       .from("ilgeeh-bichig")
       .upload(fileName, buffer, { contentType: file.type, upsert: true });

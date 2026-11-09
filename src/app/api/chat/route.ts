@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/supabase";
-
-const supabaseAdmin = getSupabaseAdmin();
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { requireWorkspaceAccess } from "@/lib/workspace-auth";
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,13 +11,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    const { data, error } = await supabaseAdmin
+    if (typeof message !== "string" || typeof sessionId !== "string" || !message.trim() || !sessionId.trim()) {
+      return NextResponse.json({ error: "Message and session ID are required." }, { status: 400 });
+    }
+
+    const { data, error } = await getSupabaseAdmin()
       .from("chat_messages")
       .insert({
-        session_id: sessionId,
+        session_id: sessionId.trim(),
         sender: "client",
-        sender_name: senderName || "Зочин",
-        message,
+        sender_name: typeof senderName === "string" ? senderName.slice(0, 100) : "Зочин",
+        message: message.trim(),
       })
       .select()
       .single();
@@ -33,16 +36,30 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const sessionId = searchParams.get("sessionId");
+  let sessionId: string | null;
+  if (req.headers.has("authorization")) {
+    const access = await requireWorkspaceAccess(req, { roles: ["staff"] });
+    if (!access.allowed) return access.response;
+    sessionId = new URL(req.url).searchParams.get("sessionId");
+  } else {
+    sessionId = req.headers.get("x-chat-session");
+    if (!sessionId || !/^chat_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId)) {
+      return NextResponse.json({ error: "A valid chat session is required." }, { status: 401 });
+    }
+  }
+  if (!sessionId || sessionId.length > 128) {
+    return NextResponse.json({ error: "A valid chat session is required." }, { status: 400 });
+  }
 
-  if (!sessionId || sessionId.length > 128) return NextResponse.json({ messages: [] });
-
-  const { data } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from("chat_messages")
     .select("*")
     .eq("session_id", sessionId)
     .order("created_at", { ascending: true });
 
+  if (error) {
+    console.error("Failed to load staff chat messages", error);
+    return NextResponse.json({ error: "Failed to load messages." }, { status: 500 });
+  }
   return NextResponse.json({ messages: data || [] });
 }

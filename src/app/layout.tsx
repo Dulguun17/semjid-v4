@@ -7,6 +7,7 @@ import { ChatWidget } from "@/components/ui/ChatWidget";
 import { GoogleAnalytics } from '@next/third-parties/google';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
 export const metadata: Metadata = {
   title: "Сэмжид Хужирт Рашаан Сувилал",
@@ -35,7 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ChatWidget />
         </LangProvider>
       </body>
-      <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID!} />
+      {gaMeasurementId ? <GoogleAnalytics gaId={gaMeasurementId} /> : null}
     </html>
   );
 }

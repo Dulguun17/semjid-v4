@@ -86,26 +86,5 @@ alter table settings      enable row level security;
 alter table content       enable row level security;
 alter table reviews       enable row level security;
 
--- Bookings: public insert, auth read/update
-create policy "Public insert bookings"   on bookings for insert with check (true);
-create policy "Auth read bookings"       on bookings for select using (auth.role() = 'authenticated');
-create policy "Auth update bookings"     on bookings for update using (auth.role() = 'authenticated');
-
--- Chat: public insert+read, admin can insert as admin
-create policy "Public insert chat"       on chat_messages for insert with check (true);
-create policy "Public read own chat"     on chat_messages for select using (true);
-
--- Settings: public read, auth update/insert
-create policy "Public read settings"      on settings for select using (true);
-create policy "Auth insert settings"      on settings for insert with check (auth.role() = 'authenticated');
-create policy "Auth update settings"      on settings for update using (auth.role() = 'authenticated');
-
--- Content: auth read/update/insert
-create policy "Auth read content"         on content for select using (auth.role() = 'authenticated');
-create policy "Auth insert content"       on content for insert with check (auth.role() = 'authenticated');
-create policy "Auth update content"       on content for update using (auth.role() = 'authenticated');
-
--- Reviews: public insert, auth read/update
-create policy "Public insert reviews"     on reviews for insert with check (true);
-create policy "Auth read reviews"         on reviews for select using (auth.role() = 'authenticated');
-create policy "Auth update reviews"       on reviews for update using (auth.role() = 'authenticated');
+-- Apply workspace_roles_migration.sql after creating a fresh schema. It adds
+-- role-scoped policies; leaving RLS without policies here is fail-closed.

@@ -1,0 +1,17 @@
+.env*
+env.local
+*.credentials.json
+*credentials*.json
+*e2e*results*.json
+*e2e*.json
+test-results/
+playwright-report/
+.git/
+.vercel/
+.gitconfig
+.node_repl_history
+*.tsbuildinfo
+.DS_Store
+*.log
+*.zip
+*.exe

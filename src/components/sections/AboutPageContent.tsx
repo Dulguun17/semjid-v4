@@ -6,6 +6,12 @@ import { t, conditions, distances, PHONE_BUS1, PHONE_BUS2 } from "@/lib/data";
 
 export function AboutPageContent() {
   const { lang } = useLang();
+  const stats: Array<[string, { mn: string; en: string }]> = [
+    [t.about.s1n, t.about.s1l],
+    [t.about.s2n, t.about.s2l],
+    [t.about.s3n, t.about.s3l],
+    [t.about.s4n, t.about.s4l],
+  ];
   return (
     <div className="bg-white">
       <div className="relative h-64 md:h-80 overflow-hidden">
@@ -24,10 +30,10 @@ export function AboutPageContent() {
             <p>{t.about.p1[lang]}</p><p>{t.about.p2[lang]}</p><p>{t.about.p3[lang]}</p><p>{t.about.p4[lang]}</p><p>{t.about.p5[lang]}</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            {[[t.about.s1n,t.about.s1l],[t.about.s2n,t.about.s2l],[t.about.s3n,t.about.s3l],[t.about.s4n,t.about.s4l]].map(([n,l]:{mn:string;en:string}|any,i) => (
+            {stats.map(([value, label], i) => (
               <div key={i} className="bg-slate-50 rounded-xl p-5 text-center border border-slate-100">
-                <div className="font-serif text-3xl text-teal">{n as string}</div>
-                <div className="text-[11px] text-slate-400 mt-1.5">{(l as {mn:string;en:string})[lang]}</div>
+                <div className="font-serif text-3xl text-teal">{value}</div>
+                <div className="text-[11px] text-slate-400 mt-1.5">{label[lang]}</div>
               </div>
             ))}
           </div>

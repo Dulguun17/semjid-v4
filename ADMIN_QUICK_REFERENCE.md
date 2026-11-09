@@ -1,23 +1,31 @@
 # 📍 Admin Panel Quick Reference
 
-## Login & Access
+## Workspaces and Access
 
 | URL | Purpose |
 |-----|---------|
 | `/admin/login` | Admin login page |
-| `/admin` | Main dashboard |
+| `/admin` | Staff workspace |
+| `/admin/ceo` | CEO read-only business overview |
 
 ## Management Pages
 
 | URL | What You Can Do | Icon |
 |-----|-----------------|------|
-| `/admin/content` | Edit all website content (text, descriptions, images) | 📄 |
-| `/admin/rooms-management` | Update room prices and images | 🛏️ |
-| `/admin/settings` | Upload referral letter PDF | ⚙️ |
-| `/admin/chat` | Chat with visitors | 💬 |
-| `/admin/calendar` | View booking calendar | 📅 |
-| `/admin/guests` | Manage guest list | 👥 |
-| `/admin/analytics` | View statistics | 📊 |
+| `/admin/bookings/manage` | Staff: manage existing bookings | 📋 |
+| `/admin/calendar` | Staff: view booking calendar | 📅 |
+| `/admin/rooms` | Staff: room availability | 🛏️ |
+| `/admin/guests` | Staff: client contact records | 👥 |
+| `/admin/chat` | Staff: manage messages | 💬 |
+| `/admin/payments` | Staff: record reception payments and manager-controlled refunds | — |
+| `/admin/content` | Explicitly authorized staff manager: edit website content | 📄 |
+| `/admin/rooms-management` | Explicitly authorized staff manager: edit room prices and images | 🛏️ |
+| `/admin/settings` | Explicitly authorized staff manager: edit settings | ⚙️ |
+| `/admin/analytics` | Redirects to the aggregate-only CEO workspace | 📊 |
+
+Public signups are customers only. Assign existing staff, CEO, and manager accounts using the secure SQL instructions in [ADMIN_WORKSPACE_ROLES_SETUP.md](./ADMIN_WORKSPACE_ROLES_SETUP.md). Do not rely on login alone for workspace access; database RLS is authoritative.
+
+Public booking remains closed; QPay is not connected. Do not enable the bed preview in production. Database/RLS and provider-dependent end-to-end verification are still required before launch.
 
 ## Content Sections (in `/admin/content`)
 

@@ -8,6 +8,12 @@ import { t } from "@/lib/data";
 
 export function AboutSection() {
   const { lang } = useLang();
+  const stats: Array<[string, { mn: string; en: string }]> = [
+    [t.about.s1n, t.about.s1l],
+    [t.about.s2n, t.about.s2l],
+    [t.about.s3n, t.about.s3l],
+    [t.about.s4n, t.about.s4l],
+  ];
   return (
     <section className="bg-white py-20 px-6 lg:px-10">
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-14 items-start">
@@ -32,10 +38,10 @@ export function AboutSection() {
             <p>{t.about.p4[lang]}</p>
           </div>
           <div className="grid grid-cols-4 gap-3 py-5 border-y border-slate-100 mb-6">
-            {[[t.about.s1n, t.about.s1l], [t.about.s2n, t.about.s2l], [t.about.s3n, t.about.s3l], [t.about.s4n, t.about.s4l]].map(([n, l]: { mn: string; en: string } | any, i) => (
+            {stats.map(([value, label], i) => (
               <div key={i} className="text-center">
-                <div className="font-serif text-2xl text-teal">{n as string}</div>
-                <div className="text-[10px] text-slate-400 mt-0.5 leading-tight">{(l as { mn: string; en: string })[lang]}</div>
+                <div className="font-serif text-2xl text-teal">{value}</div>
+                <div className="text-[10px] text-slate-400 mt-0.5 leading-tight">{label[lang]}</div>
               </div>
             ))}
           </div>

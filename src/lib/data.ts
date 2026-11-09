@@ -77,7 +77,7 @@ export const t = {
   booking: {
     badge:    { mn: "Онлайн захиалга",   en: "Online Booking"     },
     title:    { mn: "Захиалга өгөх",     en: "Make a Reservation" },
-    sub:      { mn: "Банкны шилжүүлэг, карт болон бэлэн мөнгөөр төлөх боломжтой.", en: "Pay via bank transfer, card, or cash." },
+    sub:      { mn: "Хүлээн авалтад бэлэн мөнгө эсвэл ажилтнаар баталгаажуулах банкны шилжүүлгээр төлнө.", en: "Pay cash at reception or by a bank transfer verified by staff." },
     s1:       { mn: "Хувийн мэдээлэл",  en: "Personal Info"      },
     s2:       { mn: "Өрөө & Эмчилгээ",  en: "Room & Treatments"  },
     s3:       { mn: "Төлбөр",           en: "Payment"            },
@@ -106,7 +106,7 @@ export const t = {
     card:     { mn: "Карт",             en: "Card"               },
     bank:     { mn: "Банкны шилжүүлэг", en: "Bank Transfer"      },
     cash:     { mn: "Бэлэн мөнгө",      en: "Cash on Arrival"    },
-    qNote:    { mn: "QPay QR кодыг уншуулан төлбөр хийнэ үү", en: "Scan the QPay QR code to pay" },
+    qNote:    { mn: "QPay холбогдоогүй", en: "QPay is not connected" },
     bankCo:   { mn: "\"ТӨБАСЭ ХХК\" — Сэмжид Хужирт", en: "\"TOBAS LLC\" — Semjid Khujirt" },
     bankAcc:  { mn: "Данс: 08 0005 00 5557333756 (Хаан Банк)", en: "Account: 08 0005 00 5557333756 (Khan Bank)" },
     bankRef:  { mn: "Утга: Таны нэр + ирэх өдөр", en: "Ref: Your name + check-in date" },

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/supabase";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 const supabase = getSupabaseAdmin();
 
@@ -59,7 +59,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    console.log("✅ Review submitted successfully:", data);
     return NextResponse.json({ success: true, data });
   } catch (err) {
     console.error("❌ Review submission error:", err);

@@ -1,16 +1,26 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
+import { workspaceAuthorizationHeaders } from "@/lib/workspace-api";
 import { rooms } from "@/lib/data";
-import { Save, Upload, Loader2, Image as ImageIcon, Plus, Minus, Edit3, X } from "lucide-react";
+import { Save, Upload, Loader2, Image as ImageIcon, Edit3 } from "lucide-react";
+import Image from "next/image";
 
 type RoomPrice = {
   id: string;
+  capacity: number;
+  unit_count: number;
   adult1: number | null;
   adult2: number | null;
   child02: number | null;
+  child37a: number | null;
+  child37b: number | null;
+  child812a: number | null;
+  child812b: number | null;
   img: string;
 };
+
+type RoomCatalogRow = Omit<RoomPrice, "unit_count"> & { unit_count: number | string };
 
 export default function RoomsManagement() {
   const [roomPrices, setRoomPrices] = useState<Record<string, RoomPrice>>({});
@@ -25,41 +35,21 @@ export default function RoomsManagement() {
   const loadRoomPrices = useCallback(async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.from("rooms").select("id, adult1, adult2, child02, img");
-
-      if (error) {
-        console.warn("Rooms table not found or error:", error.message);
-        // Initialize with static data if table doesn't exist
-        const initialized: Record<string, RoomPrice> = {};
-        rooms.forEach(room => {
-          initialized[room.id] = {
-            id: room.id,
-            adult1: room.adult1,
-            adult2: room.adult2,
-            child02: room.child02,
-            img: room.img,
-          };
-        });
-        setRoomPrices(initialized);
-        return;
-      }
-
-      // Merge Supabase data with static data
+      const { data, error } = await supabase.rpc("get_public_room_catalog");
+      if (error) throw error;
       const merged: Record<string, RoomPrice> = {};
-      rooms.forEach(room => {
-        const live = data?.find(r => r.id === room.id);
+      data?.forEach((room: RoomCatalogRow) => {
         merged[room.id] = {
-          id: room.id,
-          adult1: live?.adult1 ?? room.adult1,
-          adult2: live?.adult2 ?? room.adult2,
-          child02: live?.child02 ?? room.child02,
-          img: live?.img && live.img.trim() !== "" ? live.img : room.img,
+          ...room,
+          unit_count: Number(room.unit_count),
+          img: room.img || "",
         };
       });
       setRoomPrices(merged);
     } catch (err) {
-      console.error("Failed to load room prices:", err);
-      setMessage({ type: "error", text: "Өрөөний үнийг ачаалах бүтэлгүүтэй болсон" });
+      console.error("Failed to load authoritative room catalogue:", err);
+      setRoomPrices({});
+      setMessage({ type: "error", text: "Өгөгдлийн сангийн өрөөний жагсаалтыг ачаалж чадсангүй. Үнийн нөөц/хуучин мэдээлэл харуулахгүй." });
     } finally {
       setLoading(false);
     }
@@ -76,13 +66,22 @@ export default function RoomsManagement() {
 
     try {
       const room = priceEdits[roomId] || roomPrices[roomId];
-      const { error } = await supabase.from("rooms").upsert({
-        id: roomId,
-        adult1: room.adult1,
-        adult2: room.adult2,
-        child02: room.child02,
-        img: room.img,
-      });
+      const { error } = await supabase
+        .from("rooms")
+        .update({
+          capacity: room.capacity,
+          adult1: room.adult1,
+          adult2: room.adult2,
+          child02: room.child02,
+          child37a: room.child37a,
+          child37b: room.child37b,
+          child812a: room.child812a,
+          child812b: room.child812b,
+          img: room.img,
+        })
+        .eq("id", roomId)
+        .select("id")
+        .single();
 
       if (error) throw error;
 
@@ -117,8 +116,10 @@ export default function RoomsManagement() {
       const formData = new FormData();
       formData.append("file", file);
 
+      const headers = await workspaceAuthorizationHeaders();
       const response = await fetch("/api/upload-image", {
         method: "POST",
+        headers,
         body: formData,
       });
 
@@ -142,7 +143,7 @@ export default function RoomsManagement() {
     }
   };
 
-  const updatePrice = (roomId: string, key: "adult1" | "adult2" | "child02", value: number | null) => {
+  const updatePrice = (roomId: string, key: "adult1" | "adult2" | "child02" | "child37a" | "child37b" | "child812a" | "child812b", value: number | null) => {
     setPriceEdits(prev => ({
       ...prev,
       [roomId]: {
@@ -188,8 +189,11 @@ export default function RoomsManagement() {
       )}
 
       {/* Rooms Grid */}
+      {Object.keys(roomPrices).length === 0 && !loading && (
+        <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Өрөөний үнийн өгөгдөл олдсонгүй.</p>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {rooms.map(room => {
+        {rooms.filter(room => roomPrices[room.id]).map(room => {
           const data = getRoomData(room.id);
           const isEditing = editingRoom === room.id;
           const hasEdits = hasChanges(room.id);
@@ -201,7 +205,7 @@ export default function RoomsManagement() {
               {/* Header */}
               <div className="relative h-40 bg-gradient-to-br from-slate-100 to-slate-50 overflow-hidden">
                 {data?.img ? (
-                  <img src={data.img} alt={room.name.mn} className="w-full h-full object-cover" />
+                  <Image src={data.img} alt={room.name.mn} fill sizes="(max-width: 768px) 100vw, 50vw" unoptimized className="object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-slate-100">
                     <ImageIcon size={40} className="text-slate-300" />
@@ -219,7 +223,7 @@ export default function RoomsManagement() {
               <div className="px-6 py-5 space-y-4">
                 <div>
                   <h3 className="font-semibold text-slate-800">{room.name.mn}</h3>
-                  <p className="text-[13px] text-slate-500">{room.type.mn}</p>
+                  <p className="text-[13px] text-slate-500">{room.type.mn} · {data?.capacity} ор · {data?.unit_count} өрөө</p>
                 </div>
 
                 {isEditing ? (
@@ -258,11 +262,15 @@ export default function RoomsManagement() {
 
                     {/* Prices */}
                     {[
-                      { key: "adult2", label: "Насанд хүрэгчийн үнэ (2)" },
                       { key: "adult1", label: "Насанд хүрэгчийн үнэ (1)" },
+                      { key: "adult2", label: "Насанд хүрэгчийн үнэ (2)" },
                       { key: "child02", label: "Хүүхдийн үнэ (0-2)" },
+                      { key: "child37a", label: "Хүүхдийн үнэ (3-7, 1-р)" },
+                      { key: "child37b", label: "Хүүхдийн үнэ (3-7, 2-р)" },
+                      { key: "child812a", label: "Хүүхдийн үнэ (8-12, 1-р)" },
+                      { key: "child812b", label: "Хүүхдийн үнэ (8-12, 2-р)" },
                     ].map(({ key, label }) => {
-                      const typed_key = key as "adult1" | "adult2" | "child02";
+                      const typed_key = key as "adult1" | "adult2" | "child02" | "child37a" | "child37b" | "child812a" | "child812b";
                       return (
                         <div key={key} className="space-y-1.5">
                           <label className="text-[12px] font-medium text-slate-600 uppercase">{label}</label>
@@ -283,11 +291,15 @@ export default function RoomsManagement() {
                 ) : (
                   <div className="space-y-3 pt-4 border-t border-slate-100">
                     {[
-                      { key: "adult2", label: "Насанд хүрэгчийн үнэ (2)", short: "2-р насанд" },
                       { key: "adult1", label: "Насанд хүрэгчийн үнэ (1)", short: "1-р насанд" },
+                      { key: "adult2", label: "Насанд хүрэгчийн үнэ (2)", short: "2-р насанд" },
                       { key: "child02", label: "Хүүхдийн үнэ (0-2)", short: "0-2 нас" },
+                      { key: "child37a", label: "Хүүхдийн үнэ (3-7, 1-р)", short: "3-7 нас (1)" },
+                      { key: "child37b", label: "Хүүхдийн үнэ (3-7, 2-р)", short: "3-7 нас (2)" },
+                      { key: "child812a", label: "Хүүхдийн үнэ (8-12, 1-р)", short: "8-12 нас (1)" },
+                      { key: "child812b", label: "Хүүхдийн үнэ (8-12, 2-р)", short: "8-12 нас (2)" },
                     ].map(({ key, short }) => {
-                      const typed_key = key as "adult1" | "adult2" | "child02";
+                      const typed_key = key as "adult1" | "adult2" | "child02" | "child37a" | "child37b" | "child812a" | "child812b";
                       return (
                         <div key={key} className="flex justify-between items-center text-[13px]">
                           <span className="text-slate-600">{short}</span>

@@ -18,8 +18,8 @@ export default function RefundPolicyPageClient() {
           </h1>
           <p className="text-slate-500 text-sm max-w-2xl">
             {lang === "mn"
-              ? "Захиалга цуцлах нөхцөл, буцаах урьдчилгаа болон үйлчилгээний өөрчлөлтийн журмыг эндээс үзнэ үү."
-              : "Review cancellation terms, deposit refund rules, and service change procedures here."}
+              ? "Өөрчлөлт, цуцлалт, буцаалтын нөхцөлөө захиалга баталгаажуулахын өмнө хүлээн авалтаас тодруулна уу."
+              : "Ask reception to confirm change, cancellation and refund terms before confirming your booking."}
           </p>
         </div>
 
@@ -27,8 +27,8 @@ export default function RefundPolicyPageClient() {
           <h2 className="text-xl font-semibold text-slate-800">{lang === "mn" ? "Цуцлах" : "Cancellation"}</h2>
           <p className="text-slate-500 leading-relaxed">
             {lang === "mn"
-              ? "Цуцлах хүсэлтийг аль болох эрт илгээхийг зөвлөж байна. Цуцлах хугацаанаас хамааран урьдчилгаа хэсэгчлэн буцаж болох юм."
-              : "Please submit cancellations as early as possible. Refunds may be partial depending on the notice period."}
+              ? "Захиалгаа өөрчлөх эсвэл цуцлах бол хүлээн авалттай холбогдоно уу."
+              : "Contact reception to request a booking change or cancellation."}
           </p>
         </section>
 
@@ -36,14 +36,14 @@ export default function RefundPolicyPageClient() {
           <h2 className="text-xl font-semibold text-slate-800">{lang === "mn" ? "Буцаалт" : "Refunds"}</h2>
           <p className="text-slate-500 leading-relaxed">
             {lang === "mn"
-              ? "Хэрэв урьдчилгаа төлсөн бол нөхцөлөөс хамааран банкны шилжүүлгээр буцаах болно."
-              : "If a deposit has been paid, refunds will be issued by bank transfer according to the policy."}
+              ? "Буцаалт боломжтой эсэх, дүн, хугацаа, хэлбэрийг хүлээн авалтаас тодруулна уу."
+              : "Ask reception to confirm refund eligibility, amount, timing and method."}
           </p>
         </section>
 
         <div className="pt-8 border-t border-slate-200">
-          <Link href="/" className="text-teal hover:text-teal-dark text-sm font-medium">
-            {lang === "mn" ? "Нүүр хуудас руу буцах" : "Back to home"}
+          <Link href="/contact" className="text-teal hover:text-teal-dark text-sm font-medium">
+            {lang === "mn" ? "Хүлээн авалттай холбогдох" : "Contact reception"}
           </Link>
         </div>
       </div>

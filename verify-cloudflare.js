@@ -3,8 +3,6 @@
 // Cloudflare DNS Verification Script
 // Run with: node verify-cloudflare.js
 
-const https = require('https');
-
 function verifyCloudflareSetup() {
   console.log('🔍 VERIFYING CLOUDFLARE DNS SETUP\n');
 

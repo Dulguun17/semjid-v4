@@ -1,102 +1,66 @@
+import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/supabase";
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    const body = await req.json();
-    const { email, password, firstName, lastName, phone } = body;
+    const body: unknown = await request.json();
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Invalid signup request." }, { status: 400 });
+    }
 
-    // Validate password requirements
-    if (password.length < 8) {
+    const { email, password, firstName, lastName, phone } = body as {
+      email?: unknown;
+      password?: unknown;
+      firstName?: unknown;
+      lastName?: unknown;
+      phone?: unknown;
+    };
+
+    if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ error: "A valid email address is required." }, { status: 400 });
+    }
+    if (typeof password !== "string" || password.length < 8) {
       return NextResponse.json(
         { error: "Password must be at least 8 characters." },
         { status: 400 }
       );
     }
-
-    const hasLetters = /[a-zA-Z]/.test(password);
-    const hasNumbers = /[0-9]/.test(password);
-
-    if (!hasLetters || !hasNumbers) {
+    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
       return NextResponse.json(
         { error: "Password must contain both letters and numbers." },
         { status: 400 }
       );
     }
 
-    const supabase = getSupabaseAdmin();
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { auth: { persistSession: false, autoRefreshToken: false } }
+    );
 
-    console.log("🔵 Signup attempt:", { email, passwordLength: password.length });
-
-    // Workaround: Use signUp instead of admin.createUser to avoid the 7560 character bug
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
-          first_name: firstName,
-          last_name: lastName,
-          phone: phone,
-        }
-      }
+          first_name: typeof firstName === "string" ? firstName : "",
+          last_name: typeof lastName === "string" ? lastName : "",
+          phone: typeof phone === "string" ? phone : "",
+        },
+      },
     });
 
     if (error) {
-      console.error("❌ Supabase auth error:", error.message);
-      
-      // If we get the 7560 error, try an alternative approach
-      if (error.message?.includes("7560") || error.message?.includes("password")) {
-        console.warn("⚠️  Attempting fallback registration...");
-        
-        // Try with a simpler password approach
-        try {
-          const simplePassword = Buffer.from(password).toString("base64").slice(0, 72);
-          console.log("📝 Using transformed password for fallback");
-          
-          const { data: fallbackData, error: fallbackError } = await supabase.auth.signUp({
-            email,
-            password: simplePassword,
-            options: {
-              data: {
-                first_name: firstName,
-                last_name: lastName,
-                phone: phone,
-              }
-            }
-          });
-
-          if (fallbackError) {
-            console.error("❌ Fallback also failed:", fallbackError.message);
-            throw fallbackError;
-          }
-
-          console.log("✅ Fallback registration successful");
-          return NextResponse.json(
-            { message: "User created successfully", data: fallbackData },
-            { status: 201 }
-          );
-        } catch (fallbackErr: any) {
-          console.error("❌ Fallback error:", fallbackErr?.message);
-          return NextResponse.json(
-            { error: fallbackErr?.message || "Registration failed" },
-            { status: 400 }
-          );
-        }
-      }
-
+      console.error("Signup failed", error.message);
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    console.log("✅ Registration successful");
     return NextResponse.json(
-      { message: "User created successfully", data },
+      { message: "User created successfully", confirmationRequired: !data.session },
       { status: 201 }
     );
   } catch (error) {
-    console.error("Signup error:", error);
-    return NextResponse.json(
-      { error: "Registration failed" },
-      { status: 500 }
-    );
+    console.error("Signup request failed", error);
+    return NextResponse.json({ error: "Registration failed." }, { status: 500 });
   }
 }

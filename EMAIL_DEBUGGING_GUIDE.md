@@ -1,10 +1,13 @@
+# Legacy email troubleshooting guide
+
+Email delivery is not configured for the current staging phase. Do not add a
+mail-provider key or use these instructions for staging.
+
 # 📧 Email System Debugging Guide
 
 ## ✅ What I Just Fixed
 
-Updated email sender to use Resend's verified domain:
-- **Old**: `noreply@semjid-khujirt.mn` ❌ (Not verified)
-- **New**: `booking@resend.dev` ✅ (Verified)
+The sender addresses in this historical example have been removed.
 
 ---
 
@@ -28,7 +31,7 @@ cat .env.local | grep RESEND_API_KEY
 
 Expected output:
 ```
-RESEND_API_KEY=re_T5fgCVpp_JaGSgdCr4vPghJ4WwyYB4Wai
+RESEND_API_KEY=re_<your-resend-api-key>
 ```
 
 ### Step 2: Check ADMIN_EMAIL  
@@ -39,7 +42,7 @@ cat .env.local | grep ADMIN_EMAIL
 
 Expected output:
 ```
-ADMIN_EMAIL=otgonbatzolboo@gmail.com
+ADMIN_EMAIL=<authorized-contact-email>
 ```
 
 ### Step 3: Restart Development Server
@@ -64,8 +67,8 @@ npm run dev
 
 **SUCCESS** - You should see:
 ```
-✅ Booking confirmation email sent to test@gmail.com
-✅ Admin notification email sent to otgonbatzolboo@gmail.com
+✅ Booking confirmation email sent to <authorized-contact-email>
+✅ Admin notification email sent to <authorized-contact-email>
 ```
 
 **ERROR** - You might see one of these:
@@ -88,7 +91,7 @@ npm run dev
 ```
 ⚠️ ADMIN_EMAIL not configured in .env.local
 ```
-→ **Fix**: Add `ADMIN_EMAIL=otgonbatzolboo@gmail.com` to `.env.local`
+→ **Fix**: Add `ADMIN_EMAIL=<authorized-contact-email>` to `.env.local`
 
 ---
 
@@ -100,7 +103,7 @@ npm run dev
 3. If not there, check **SPAM** folder
 
 ### For Admin Email  
-1. Check email: `otgonbatzolboo@gmail.com`
+1. Check email: `<authorized-contact-email>`
 2. Look for subject: "📋 Шинэ захиалга: SKH-XXXXX - [Guest Name]"
 3. If not there, check **SPAM** folder
 
@@ -125,7 +128,7 @@ npm run dev
 
 - [ ] **Check SPAM folder?**
   - Emails from `@resend.dev` sometimes marked as spam
-  - Add `booking@resend.dev` to contacts
+  - Add `<authorized-contact-email>` to contacts
 
 - [ ] **Connected to internet?**
   - Resend API requires network access

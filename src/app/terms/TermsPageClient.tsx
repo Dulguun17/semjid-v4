@@ -18,8 +18,8 @@ export default function TermsPageClient() {
           </h1>
           <p className="text-slate-500 text-sm max-w-2xl">
             {lang === "mn"
-              ? "Энэхүү нөхцөл нь таны захиалга, төлбөр, цуцалгаа болон үйлчилгээтэй холбоотой эрх, үүргийг тодорхойлно."
-              : "These terms define your rights and obligations for bookings, payments, cancellations, and services."}
+              ? "Захиалга баталгаажуулахын өмнө байрлах хугацаа, үйлчилгээ, төлбөр болон цуцлалтын нөхцөлөө хүлээн авалтаас тодруулна уу."
+              : "Confirm your stay, services, payment and cancellation terms with reception before confirming a booking."}
           </p>
         </div>
 
@@ -27,8 +27,8 @@ export default function TermsPageClient() {
           <h2 className="text-xl font-semibold text-slate-800">{lang === "mn" ? "Захиалга ба төлбөр" : "Booking and Payment"}</h2>
           <p className="text-slate-500 leading-relaxed">
             {lang === "mn"
-              ? "Захиалгыг баталгаажуулахын тулд төлбөрийг картаар эсвэл банкны шилжүүлгээр дамжуулж болно."
-              : "To confirm your reservation, payment can be made via card or bank transfer."}
+              ? "Захиалгыг ажилтан баталгаажуулна. Хүлээн авалтад бэлэн төлөх эсвэл банкны шилжүүлэг хийж болно. Шилжүүлгийг ажилтан шалгах хүртэл хүлээгдэж буй төлбөрт бүртгэнэ."
+              : "Staff confirm bookings. Pay cash at reception or by bank transfer. Transfers remain pending until staff verify receipt."}
           </p>
         </section>
 
@@ -36,8 +36,8 @@ export default function TermsPageClient() {
           <h2 className="text-xl font-semibold text-slate-800">{lang === "mn" ? "Цуцлах нөхцөл" : "Cancellation Policy"}</h2>
           <p className="text-slate-500 leading-relaxed">
             {lang === "mn"
-              ? "Цуцлах үед тухайн нөхцөлөөс хамааран урьдчилгаа буцах эсэх нь тодорхойлогдоно."
-              : "Cancellation refunds depend on the policy in effect at the time of booking."}
+              ? "Өөрчлөлт, цуцлалт, буцаалтын нөхцөлөө захиалга баталгаажуулахын өмнө хүлээн авалтаас тодруулна уу."
+              : "Ask reception to confirm change, cancellation and refund terms before confirming your booking."}
           </p>
         </section>
 
@@ -45,8 +45,8 @@ export default function TermsPageClient() {
           <h2 className="text-xl font-semibold text-slate-800">{lang === "mn" ? "Эрүүл ахуй" : "Health Requirements"}</h2>
           <p className="text-slate-500 leading-relaxed">
             {lang === "mn"
-              ? "Эмнэлгийн илгээх бичиг, шинжилгээ, даатгалын бичиг зэрэг материалыг авч ирэх шаардлагатай."
-              : "Medical referral forms and supporting documents may be required for treatment."}
+              ? "Зочин бүр илгээх бичгийг татаж, хэвлэж, бөглүүлэн авч ирнэ. Захиалгын хуудсан дахь ирэхийн өмнөх санамжийг шалгана уу."
+              : "Every guest must download, print, complete and bring the referral form. Review the arrival checklist on the booking page."}
           </p>
         </section>
 
