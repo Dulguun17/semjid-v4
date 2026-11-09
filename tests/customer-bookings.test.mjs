@@ -113,3 +113,155 @@ test("production booking stays gated even when the local test flag is set", asyn
     if (previousFlag === undefined) delete process.env.CUSTOMER_BOOKING_TEST_ENABLED; else process.env.CUSTOMER_BOOKING_TEST_ENABLED = previousFlag;
   }
 });
+
+function enableCustomerBookingTest(context) {
+  const previousMode = process.env.NODE_ENV;
+  const previousFlag = process.env.CUSTOMER_BOOKING_TEST_ENABLED;
+  process.env.NODE_ENV = "test";
+  process.env.CUSTOMER_BOOKING_TEST_ENABLED = "true";
+  context.after(() => {
+    if (previousMode === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousMode;
+    if (previousFlag === undefined) delete process.env.CUSTOMER_BOOKING_TEST_ENABLED;
+    else process.env.CUSTOMER_BOOKING_TEST_ENABLED = previousFlag;
+  });
+}
+
+const bookingInput = {
+  roomId: "test-room",
+  checkIn: "2026-12-01",
+  checkOut: "2026-12-08",
+  bedIds: ["B2", "B1"],
+  gender: "female",
+  firstName: " Synthetic ",
+  lastName: " Customer ",
+  phone: " 00000000 ",
+  payment: "bank",
+  requestId: "00000000-0000-4000-8000-000000000001",
+  expectedTotal: "14000",
+};
+
+function customerBookingRoute({ allowed = true, rpcError = null, bookingId = "synthetic-booking" } = {}) {
+  const calls = [];
+  const route = load("src/app/api/booking/route.ts", {
+    "@/lib/customer-booking": load("src/lib/customer-booking.ts"),
+    "@/lib/workspace-auth": {
+      requireWorkspaceAccess: async (_request, options) => {
+        assert.deepEqual(options, { roles: ["customer"] });
+        return allowed
+          ? { allowed: true }
+          : { allowed: false, response: NextResponse.json({ error: "Access denied" }, { status: 403 }) };
+      },
+      createWorkspaceUserClient: request => {
+        assert.equal(request.headers.get("Authorization"), "Bearer synthetic-token");
+        return {
+          rpc: async (name, args) => {
+            calls.push({ name, args });
+            return {
+              error: rpcError,
+              data: {
+                id: bookingId,
+                ref: "SYNTHETIC-REQUEST",
+                room_id: "test-room",
+                check_in: bookingInput.checkIn,
+                check_out: bookingInput.checkOut,
+                total: "14000",
+                status: "pending",
+                expires_at: "2026-12-02T00:00:00Z",
+                phone: "private-synthetic-contact",
+                customer_user_id: "private-synthetic-owner",
+              },
+            };
+          },
+        };
+      },
+    },
+  });
+  return { route, calls };
+}
+
+function bookingRequest(input = bookingInput) {
+  return new Request("http://localhost/api/booking", {
+    method: "POST",
+    headers: { Authorization: "Bearer synthetic-token", "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+test("booking retries preserve the request ID and leave ownership and pricing to the authenticated RPC", async context => {
+  enableCustomerBookingTest(context);
+  const { route, calls } = customerBookingRoute();
+  const forgedInput = {
+    ...bookingInput,
+    ownerId: "forged-owner",
+    customer_user_id: "forged-owner",
+    total: "1",
+    guests: 99,
+    status: "confirmed",
+    source: "walk_in",
+  };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const response = await route.POST(bookingRequest(forgedInput));
+    assert.equal(response.status, 201);
+    assert.equal(response.headers.get("Cache-Control"), "private, no-store");
+    const result = await response.json();
+    assert.equal(result.booking.total, "14000");
+    assert.equal(result.booking.status, "pending");
+    assert.equal(JSON.stringify(result).includes("private-synthetic"), false);
+  }
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls[0], calls[1]);
+  assert.deepEqual(calls[0], {
+    name: "create_customer_bed_booking",
+    args: {
+      p_request_id: bookingInput.requestId,
+      p_expected_total: "14000",
+      p_booking: {
+        fname: "Synthetic",
+        lname: "Customer",
+        phone: "00000000",
+        room_id: "test-room",
+        check_in: bookingInput.checkIn,
+        check_out: bookingInput.checkOut,
+        guests: 2,
+        payment: "bank",
+        bed_assignments: [
+          { bed_id: "B1", guest_gender: "female" },
+          { bed_id: "B2", guest_gender: "female" },
+        ],
+      },
+    },
+  });
+});
+
+test("unauthorized and malformed booking submissions never reach the booking RPC", async context => {
+  enableCustomerBookingTest(context);
+  const denied = customerBookingRoute({ allowed: false });
+  assert.equal((await denied.route.POST(bookingRequest())).status, 403);
+  assert.deepEqual(denied.calls, []);
+  const invalid = customerBookingRoute();
+  for (const input of [
+    { ...bookingInput, expectedTotal: 14000 },
+    { ...bookingInput, requestId: "invalid" },
+    { ...bookingInput, payment: "qpay" },
+    { ...bookingInput, bedIds: ["B1", "B1"] },
+  ]) {
+    assert.equal((await invalid.route.POST(bookingRequest(input))).status, 400);
+  }
+  assert.deepEqual(invalid.calls, []);
+});
+
+test("booking conflicts and uncertain database responses return safe errors without a fabricated receipt", async context => {
+  enableCustomerBookingTest(context);
+  for (const [code, status] of [["42501", 403], ["23505", 409], ["23P01", 409], ["22023", 400], ["XX000", 503]]) {
+    const { route } = customerBookingRoute({ rpcError: { code, message: "private-synthetic-database-detail" } });
+    const response = await route.POST(bookingRequest());
+    const result = await response.json();
+    assert.equal(response.status, status);
+    assert.equal(result.booking, undefined);
+    assert.equal(JSON.stringify(result).includes("private-synthetic"), false);
+  }
+  const missing = await customerBookingRoute({ bookingId: null }).route.POST(bookingRequest());
+  assert.equal(missing.status, 503);
+  assert.equal((await missing.json()).booking, undefined);
+});
