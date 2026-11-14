@@ -1,116 +1,35 @@
 "use client";
-import { useState } from 'react';
-import { Star, Send } from 'lucide-react';
+import { useId, useState } from "react";
+import { Star, Send } from "lucide-react";
+import { useLang } from "@/lib/lang-context";
 
 export function ReviewForm({ roomId }: { roomId?: string }) {
-  const [name, setName] = useState('');
+  const { lang } = useLang(); const id = useId();
+  const [name, setName] = useState("");
   const [rating, setRating] = useState(5);
-  const [comment, setComment] = useState('');
+  const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || !comment.trim()) {
-      alert('Please fill in all fields');
-      return;
-    }
-
-    setSubmitting(true);
+  const [notice, setNotice] = useState("");
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault(); if (submitting) return;
+    setSubmitting(true); setNotice("");
     try {
-      const response = await fetch('/api/reviews', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          room_id: roomId || 'general',
-          fname: name.trim(),
-          rating: parseInt(rating.toString()),
-          comment: comment.trim(),
-        }),
-      });
-
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        console.error('Review submission error:', responseData);
-        throw new Error(responseData.error || 'Failed to submit review');
-      }
-
-      console.log('✅ Review submitted:', responseData);
-
-      // Reset form
-      setName('');
-      setComment('');
-      setRating(5);
-      alert('✅ आपकी समीक्षा सफलतापूर्वक जमा की गई! (Your review was submitted successfully!)');
-      
-      // Reload to show new review
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
-    } catch (error) {
-      console.error('❌ Error submitting review:', error);
-      const errorMsg = error instanceof Error ? error.message : 'Failed to submit review. Please try again.';
-      alert(errorMsg);
-    } finally {
-      setSubmitting(false);
-    }
+      const response = await fetch("/api/reviews", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ room_id: roomId || "general", fname: name.trim(), rating, comment: comment.trim() }) });
+      if (!response.ok) throw new Error("Review submission unconfirmed");
+      setName(""); setRating(5); setComment("");
+      setNotice(lang === "mn" ? "Сэтгэгдэл хүлээн авлаа. Нийтлэхийн өмнө ажилтан хянана." : "Review received. Staff review it before publication.");
+    } catch { setNotice(lang === "mn" ? "Сэтгэгдэл илгээгдсэн эсэхийг баталгаажуулж чадсангүй. Дахин оролдоно уу." : "Submission could not be confirmed. Please try again."); }
+    finally { setSubmitting(false); }
   };
-
-  return (
-    <div className="bg-white rounded-lg p-6 shadow-sm border">
-      <h3 className="text-lg font-semibold mb-4">Leave a Review</h3>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Name</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full p-2 border rounded"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Rating</label>
-          <div className="flex gap-1">
-            {[1,2,3,4,5].map(i => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setRating(i)}
-                className="focus:outline-none"
-              >
-                <Star
-                  size={24}
-                  className={i <= rating ? "text-yellow-400 fill-current" : "text-gray-300"}
-                />
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Comment</label>
-          <textarea
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            className="w-full p-2 border rounded h-24"
-            required
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={submitting}
-          className="flex items-center gap-2 bg-teal text-white px-4 py-2 rounded hover:bg-teal-dark disabled:opacity-50"
-        >
-          <Send size={16} />
-          {submitting ? 'Submitting...' : 'Submit Review'}
-        </button>
-      </form>
-    </div>
-  );
+  return <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <h3 className="mb-3 text-lg font-semibold text-slate-900">{lang === "mn" ? "Нийтийн сэтгэгдэл бичих" : "Leave a public review"}</h3>
+    <p className="mb-5 text-sm leading-6 text-slate-600">{lang === "mn" ? "Хянуулсан сэтгэгдэл нэр, үнэлгээ, тайлбартай нийтлэгдэж болно. Эмнэлгийн болон нууц мэдээлэл бүү оруулаарай." : "An approved review may display your submitted name, rating and comment. Keep medical and confidential details out of it."}</p>
+    {notice && <p role="status" className="mb-4 rounded-lg bg-slate-50 p-4 text-sm text-slate-700">{notice}</p>}
+    <form onSubmit={handleSubmit}><fieldset disabled={submitting} className="space-y-4">
+      <label htmlFor={`${id}-name`} className="block text-sm font-medium text-slate-700">{lang === "mn" ? "Нийтлэх нэр" : "Display name"}<input id={`${id}-name`} required maxLength={100} value={name} onChange={event => setName(event.target.value)} className="mt-2 block min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2" /></label>
+      <fieldset><legend className="mb-2 text-sm font-medium text-slate-700">{lang === "mn" ? "Үнэлгээ" : "Rating"}</legend><div className="flex gap-1">{[1,2,3,4,5].map(value => <label key={value} className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded focus-within:outline focus-within:outline-2 focus-within:outline-teal"><input className="sr-only" type="radio" name={`${id}-rating`} value={value} checked={rating === value} onChange={() => setRating(value)} /><Star aria-hidden="true" size={24} className={value <= rating ? "fill-current text-yellow-400" : "text-gray-300"} /><span className="sr-only">{lang === "mn" ? `5-аас ${value}` : `${value} out of 5`}</span></label>)}</div></fieldset>
+      <label htmlFor={`${id}-comment`} className="block text-sm font-medium text-slate-700">{lang === "mn" ? "Сэтгэгдэл" : "Comment"}<textarea id={`${id}-comment`} required maxLength={2000} value={comment} onChange={event => setComment(event.target.value)} className="mt-2 block min-h-28 w-full rounded-lg border border-slate-300 bg-white p-3" /></label>
+      <button type="submit" disabled={submitting} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-teal px-5 py-3 font-semibold text-white disabled:opacity-50"><Send aria-hidden="true" size={16} />{submitting ? (lang === "mn" ? "Илгээж байна…" : "Submitting…") : (lang === "mn" ? "Хянуулахаар илгээх" : "Submit for review")}</button>
+    </fieldset></form>
+  </section>;
 }

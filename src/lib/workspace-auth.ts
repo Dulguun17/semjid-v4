@@ -56,7 +56,7 @@ export async function requireWorkspaceAccess(
 
     const { data: roleValue, error: roleError } = await supabase.rpc("get_workspace_role");
     if (roleError || !isWorkspaceRole(roleValue)) {
-      console.error("Workspace role lookup failed", roleError);
+      console.error("Workspace role lookup failed", { code: roleError?.code });
       return {
         allowed: false,
         response: NextResponse.json({ error: "Unable to verify workspace access" }, { status: 503 }),
@@ -65,7 +65,7 @@ export async function requireWorkspaceAccess(
 
     const { data: managerValue, error: managerError } = await supabase.rpc("is_workspace_manager");
     if (managerError || typeof managerValue !== "boolean") {
-      console.error("Workspace manager lookup failed", managerError);
+      console.error("Workspace manager lookup failed", { code: managerError?.code });
       return {
         allowed: false,
         response: NextResponse.json({ error: "Unable to verify workspace access" }, { status: 503 }),
@@ -87,8 +87,8 @@ export async function requireWorkspaceAccess(
     }
 
     return { allowed: true, role: roleValue, isManager: managerValue };
-  } catch (error) {
-    console.error("Workspace permission verification failed", error);
+  } catch {
+    console.error("Workspace permission verification failed");
     return {
       allowed: false,
       response: NextResponse.json({ error: "Unable to verify workspace access" }, { status: 503 }),

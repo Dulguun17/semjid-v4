@@ -1,34 +1,38 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { MessageSquare, X, Send, Loader2 } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useLang } from "@/lib/lang-context";
 
 type Message = { id?: string; sender: string; message: string; created_at?: string; };
 
 function getSessionId() {
   if (typeof window === "undefined") return "";
-  let id = localStorage.getItem("chat_session");
+  let id;
+  try { id = localStorage.getItem("chat_session"); } catch { /* Chat can use an in-memory session. */ }
   if (!id || !/^chat_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
     id = `chat_${crypto.randomUUID()}`;
-    localStorage.setItem("chat_session", id);
+    try { localStorage.setItem("chat_session", id); } catch { /* Browser storage may be blocked. */ }
   }
   return id;
 }
 
 function getName() {
   if (typeof window === "undefined") return "";
-  return localStorage.getItem("chat_name") || "";
+  try { return localStorage.getItem("chat_name") || ""; } catch { return ""; }
 }
 
 export function ChatWidget() {
   const { lang } = useLang();
+  const path = usePathname();
+  const hidden = path.startsWith("/admin") || path === "/login" || path === "/signup";
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [name, setName] = useState("");
   const [nameSet, setNameSet] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [sessionId] = useState(getSessionId);
+  const [sessionId, setSessionId] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const loadMessages = useCallback(async () => {
@@ -50,21 +54,23 @@ export function ChatWidget() {
     placeholder: { mn: "Мессеж бичнэ үү...", en: "Type a message..." },
     namePlaceholder: { mn: "Таны нэр", en: "Your name" },
     nameBtn:     { mn: "Үргэлжлүүлэх", en: "Continue" },
-    welcome:     { mn: "Сайн байна уу! Та асуулт байвал бичнэ үү. Бид удахгүй хариу өгнө.", en: "Hello! Feel free to ask us anything. We'll respond shortly." },
-    online:      { mn: "Онлайн", en: "Online" },
+    welcome:     { mn: "Хүлээн авалтад асуултаа бичнэ үү. Эмнэлгийн болон нууц мэдээлэл бүү илгээгээрэй.", en: "Message reception with your question. Keep medical and confidential details out of chat." },
+    online:      { mn: "Хүлээн авалтад мессеж", en: "Message reception" },
   };
 
   useEffect(() => {
+    if (hidden || !open) return;
+    setSessionId(getSessionId());
     const savedName = getName();
     if (savedName) { setName(savedName); setNameSet(true); }
-  }, []);
+  }, [hidden, open]);
 
   useEffect(() => {
-    if (!open || !nameSet) return;
+    if (hidden || !open || !nameSet || !sessionId) return;
     loadMessages();
     const interval = setInterval(loadMessages, 4000);
     return () => clearInterval(interval);
-  }, [open, nameSet, loadMessages]);
+  }, [hidden, open, nameSet, sessionId, loadMessages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -72,7 +78,7 @@ export function ChatWidget() {
 
   const handleSetName = () => {
     if (!name.trim()) return;
-    localStorage.setItem("chat_name", name.trim());
+    try { localStorage.setItem("chat_name", name.trim()); } catch { /* Keep the name in memory. */ }
     setNameSet(true);
   };
 
@@ -93,12 +99,13 @@ export function ChatWidget() {
     setLoading(false);
   };
 
+  if (hidden) return null;
   return (
     <>
       {/* Floating button */}
       <button
         onClick={() => setOpen(!open)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-teal hover:bg-teal-dark text-white rounded-full shadow-lg shadow-teal/30 flex items-center justify-center transition-all cursor-pointer"
+        className="chat-launcher fixed right-6 z-50 w-14 h-14 bg-teal hover:bg-teal-dark text-white rounded-full shadow-lg shadow-teal/30 flex items-center justify-center transition-all cursor-pointer"
         aria-label="Chat"
       >
         {open ? <X size={22}/> : <MessageSquare size={22}/>}
@@ -109,7 +116,7 @@ export function ChatWidget() {
 
       {/* Chat window */}
       {open && (
-        <div className="fixed bottom-24 right-6 z-50 w-80 bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{height:"420px"}}>
+        <div data-chat-panel className="chat-panel fixed right-6 z-50 w-80 bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{height:"420px"}}>
           {/* Header */}
           <div className="bg-teal px-4 py-3 flex items-center gap-3">
             <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">

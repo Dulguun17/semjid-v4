@@ -1,10 +1,7 @@
-import { Metadata } from "next";
+import { metadataForPage } from "@/lib/site-metadata";
 import TermsPageClient from "./TermsPageClient";
 
-export const metadata: Metadata = {
-  title: "Terms & Conditions | Сэмжид Хужирт",
-  description: "Terms and conditions for Semjid Khujirt resort bookings.",
-};
+export const metadata = metadataForPage("/terms");
 
 export default function TermsPage() {
   return <TermsPageClient />;

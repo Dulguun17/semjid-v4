@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useLang } from "@/lib/lang-context";
 import { workspaceAuthorizationHeaders, workspaceSession } from "@/lib/workspace-api";
-import { customerBookingErrorMessage, customerBookingStatusLabel, type CustomerBedSelection, type CustomerBookingQuote } from "@/lib/customer-booking";
+import { bookingConfirmationStorageKey, customerBookingErrorMessage, customerBookingStatusLabel, type CustomerBedSelection, type CustomerBookingQuote } from "@/lib/customer-booking";
 import { formatMntAmount } from "@/lib/payment-ledger";
 import { BookingPaymentInstructions } from "@/components/ui/BookingPaymentInstructions";
 import { supabase } from "@/lib/supabase";
@@ -13,6 +14,7 @@ type BookingRequest = CustomerBedSelection & { ownerId: string; firstName: strin
 
 export function CustomerBookingSummary({ selection }: { selection: CustomerBedSelection }) {
   const { lang } = useLang();
+  const router = useRouter();
   const [quote, setQuote] = useState<CustomerBookingQuote | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -147,9 +149,14 @@ export function CustomerBookingSummary({ selection }: { selection: CustomerBedSe
         setError(customerBookingErrorMessage(response.status, lang));
         return;
       }
+      const currentSession = await workspaceSession();
+      if (currentSession.user.id !== session.user.id) throw new Error("Account changed");
+      if (typeof result.booking.id !== "string" || !result.booking.id) throw new Error("Saved booking ID missing");
+      sessionStorage.setItem(bookingConfirmationStorageKey(session.user.id), result.booking.id);
       setSaved(result.booking);
       sessionStorage.removeItem(attemptKey);
       setPending(null);
+      router.replace("/booking/confirmation");
     } catch {
       setError(lang === "mn" ? "Хадгалсан эсэх баталгаажаагүй. Миний захиалгуудыг шалгах эсвэл ижил хүсэлтээр дахин оролдоно уу." : "Saving could not be confirmed. Check My Bookings or retry the same request.");
     } finally { setSaving(false); }

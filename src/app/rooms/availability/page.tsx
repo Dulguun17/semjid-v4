@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { MessageCircle } from "lucide-react";
 import { BookingSteps } from "@/components/ui/BookingSteps";
 import { BookingArrivalChecklist } from "@/components/ui/BookingArrivalChecklist";
 import { BookingWhatToExpect } from "@/components/ui/BookingWhatToExpect";
 import { BookingFAQ } from "@/components/ui/BookingFAQ";
-import { rooms as roomDescriptions } from "@/lib/data";
+import { MESSENGER_URL, rooms as roomDescriptions } from "@/lib/data";
 import { addUtcDays, validateBookingDates } from "@/lib/booking-rules";
 import { ulaanbaatarToday } from "@/lib/bed-availability";
 import { useLang } from "@/lib/lang-context";
@@ -263,6 +264,11 @@ export default function BedAvailabilityPage() {
           <p className="text-base leading-7 text-slate-600">
             {lang === "mn" ? "Огноо, зочдоо сонгоод нэг өрөөний орнуудаас сонгоно уу. Хадгалахын өмнө нийт үнэ, мэдээллээ шалгана." : "Choose your dates and guests, then select beds in one room. Review the total and your details before saving."}
           </p>
+          <a href={MESSENGER_URL} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-teal/30 bg-white px-4 py-2 text-sm font-semibold text-teal underline hover:bg-teal/5">
+            <MessageCircle aria-hidden="true" size={16} />
+            {lang === "mn" ? "Messenger-ээр холбогдох" : "Message on Messenger"}
+            <span className="sr-only">{lang === "mn" ? " · Шинэ табд нээгдэнэ" : " · Opens in a new tab"}</span>
+          </a>
         </header>
 
         <BookingSteps activeStep={currentStep} />

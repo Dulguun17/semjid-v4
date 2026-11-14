@@ -9,7 +9,12 @@ declare global {
 
 const getSupabaseClient = () => {
   if (!globalThis.__supabase) {
-    globalThis.__supabase = createClient(url, anon)
+    globalThis.__supabase = createClient(url, anon, {
+      auth: {
+        // The callback page completes each link once, using this browser's PKCE storage.
+        detectSessionInUrl: typeof window === 'undefined' || window.location.pathname !== '/auth/callback',
+      },
+    })
   }
   return globalThis.__supabase
 }

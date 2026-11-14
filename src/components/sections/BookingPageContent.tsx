@@ -1,10 +1,11 @@
 "use client";
 
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, MessageCircle } from "lucide-react";
 import { BookingWhatToExpect } from "@/components/ui/BookingWhatToExpect";
 import { BookingArrivalChecklist } from "@/components/ui/BookingArrivalChecklist";
 import { BookingFAQ } from "@/components/ui/BookingFAQ";
 import { useLang } from "@/lib/lang-context";
+import { MESSENGER_URL } from "@/lib/data";
 
 export function BookingPageContent() {
   const { lang } = useLang();
@@ -25,6 +26,12 @@ export function BookingPageContent() {
             </p>
           </div>
         </div>
+
+        <a href={MESSENGER_URL} target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg border border-teal/30 px-4 py-2 text-sm font-semibold text-teal underline hover:bg-teal/5">
+          <MessageCircle aria-hidden="true" size={16} />
+          {lang === "mn" ? "Messenger-ээр холбогдох" : "Message on Messenger"}
+          <span className="sr-only">{lang === "mn" ? " · Шинэ табд нээгдэнэ" : " · Opens in a new tab"}</span>
+        </a>
 
         <ol className="mt-6 grid gap-2 text-sm sm:grid-cols-2">
           {[

@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { supabase } from "@/lib/supabase";
 import Image from "next/image";
 
@@ -29,6 +30,7 @@ export default function AdminLogin() {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
+        <div className="mb-4 flex justify-end"><ThemeToggle /></div>
         <div className="text-center mb-8">
           <div className="relative w-16 h-16 mx-auto mb-4">
             <Image src="/images/logo.png" alt="Logo" fill className="object-contain" />

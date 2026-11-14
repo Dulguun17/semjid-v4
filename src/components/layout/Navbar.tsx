@@ -1,9 +1,10 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Menu, X, Phone, User } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useLang } from "@/lib/lang-context";
 import { t, PHONE1, PHONE2 } from "@/lib/data";
 import { supabase } from "@/lib/supabase";
@@ -15,6 +16,13 @@ export function Navbar() {
   const [open, setOpen] = useState(false);
   const [authUser, setAuthUser] = useState<SupabaseUser | null>(null);
   const path = usePathname();
+  const menuButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") { setOpen(false); menuButton.current?.focus(); } };
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [open]);
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 10);
@@ -39,11 +47,13 @@ export function Navbar() {
     return (f + l).toUpperCase() || authUser?.email?.[0]?.toUpperCase() || "U";
   })();
 
+  if (path.startsWith("/admin")) return null;
+
   const links = [
-    { href: "/",         label: t.nav.home },
     { href: "/about",    label: t.nav.about },
     { href: "/rooms",    label: t.nav.rooms },
     { href: "/services", label: t.nav.services },
+    { href: "/contact", label: {mn:"Холбоо барих", en:"Contact"} },
   ];
 
   return (
@@ -51,12 +61,12 @@ export function Navbar() {
       {/* Top bar */}
       <div className="hidden md:block bg-teal text-white text-[11px] py-1.5 px-6 lg:px-10">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <span className="opacity-70">{lang === "mn" ? "Жилийн 4 улиралд нээлттэй · Өвөрхангай аймаг, Хужирт сум" : "Open Year-Round · Khujirt soum, Uvurkhangai aimag"}</span>
+          <span className="opacity-100">{lang === "mn" ? "Жилийн 4 улиралд нээлттэй · Өвөрхангай аймаг, Хужирт сум" : "Open Year-Round · Khujirt soum, Uvurkhangai aimag"}</span>
           <div className="flex items-center gap-4">
-            <a href={`tel:${PHONE1.replace(/-/g,"")}`} className="flex items-center gap-1 opacity-80 hover:opacity-100 no-underline text-white">
+            <a href={`tel:${PHONE1.replace(/-/g,"")}`} className="flex items-center gap-1 opacity-100 hover:opacity-100 no-underline text-white">
               <Phone size={10} /> {PHONE1}
             </a>
-            <a href={`tel:${PHONE2.replace(/-/g,"")}`} className="flex items-center gap-1 opacity-80 hover:opacity-100 no-underline text-white">
+            <a href={`tel:${PHONE2.replace(/-/g,"")}`} className="flex items-center gap-1 opacity-100 hover:opacity-100 no-underline text-white">
               <Phone size={10} /> {PHONE2}
             </a>
           </div>
@@ -66,7 +76,7 @@ export function Navbar() {
       {/* Main nav */}
       <nav className={`sticky top-0 z-50 bg-white transition-shadow duration-300 ${scrolled ? "shadow-md" : "border-b border-slate-100"}`}>
         <div className="max-w-7xl mx-auto px-6 lg:px-10 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
+          <Link href="/" onClick={() => setOpen(false)} className="flex items-center gap-3">
             <div className="relative w-12 h-12">
               <Image src="/images/logo.png" alt="Logo" fill sizes="48px" className="object-contain" />
             </div>
@@ -76,9 +86,10 @@ export function Navbar() {
             </div>
           </Link>
 
-          <div className="hidden md:flex items-center gap-6">
+          <div className="hidden lg:flex items-center gap-4">
             {links.map(l => (
               <Link key={l.href} href={l.href}
+                aria-current={path === l.href ? "page" : undefined}
                 className={`text-[13px] no-underline transition-colors ${path === l.href ? "text-teal font-semibold border-b-2 border-teal pb-0.5" : "text-slate-500 hover:text-teal"}`}>
                 {l.label[lang]}
               </Link>
@@ -91,6 +102,7 @@ export function Navbar() {
                 </button>
               ))}
             </div>
+            <ThemeToggle />
             {authUser ? (
               <Link href="/profile" className="w-8 h-8 rounded-full bg-teal text-white text-[12px] font-semibold flex items-center justify-center hover:bg-teal-dark transition-colors no-underline" title={authUser.email}>
                 {initials}
@@ -106,9 +118,10 @@ export function Navbar() {
           </div>
 
           <button
+            ref={menuButton}
             type="button"
             onClick={() => setOpen(!open)}
-            className="md:hidden text-slate-600"
+            className="lg:hidden min-h-11 min-w-11 text-slate-600"
             aria-label={open
               ? (lang === "mn" ? "Цэс хаах" : "Close navigation menu")
               : (lang === "mn" ? "Цэс нээх" : "Open navigation menu")}
@@ -120,7 +133,7 @@ export function Navbar() {
         </div>
 
         {open && (
-          <div id="mobile-navigation" className="md:hidden bg-white border-t border-slate-100 py-5 px-6 space-y-4">
+          <div id="mobile-navigation" className="lg:hidden bg-white border-t border-slate-100 py-5 px-6 space-y-4">
             {links.map(l => (
               <Link key={l.href} href={l.href} onClick={() => setOpen(false)}
                 className="block text-[14px] text-slate-600 no-underline">{l.label[lang]}</Link>
@@ -133,6 +146,7 @@ export function Navbar() {
                 </button>
               ))}
             </div>
+            <ThemeToggle />
             {authUser ? (
               <Link href="/profile" onClick={() => setOpen(false)} className="block text-[13px] text-teal no-underline font-medium">
                 {lang === "mn" ? "Миний профайл" : "My Profile"}

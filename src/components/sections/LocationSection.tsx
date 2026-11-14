@@ -1,14 +1,12 @@
 "use client";
-import { MapPin, Bus, Phone, Clock, Navigation } from "lucide-react";
+import { MapPin, Bus, Phone, Navigation } from "lucide-react";
+import { MAP_DIRECTIONS_URL, MAP_SEARCH_URL } from "@/lib/business";
 import { useLang } from "@/lib/lang-context";
-import { t, distances, PHONE_BUS1, PHONE_BUS2 } from "@/lib/data";
+import { t, PHONE_BUS1, PHONE_BUS2 } from "@/lib/data";
 
 export function LocationSection() {
   const { lang } = useLang();
 
-  const lat = 46.9022;
-  const lng = 102.7780;
-  const mapSrc = `https://maps.google.com/maps?q=${lat},${lng}&z=13&output=embed&hl=${lang === "mn" ? "mn" : "en"}`;
 
   return (
     <section id="location" className="bg-slate-50 py-20 px-6 lg:px-10">
@@ -24,7 +22,7 @@ export function LocationSection() {
               {t.location.title[lang]}
             </h2>
             <a
-              href={`https://maps.google.com/?q=${lat},${lng}`}
+              href={MAP_SEARCH_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 text-[12px] font-medium text-teal border border-teal/30 hover:bg-teal hover:text-white px-4 py-2 rounded-lg transition-all no-underline shrink-0"
@@ -58,27 +56,9 @@ export function LocationSection() {
               </div>
             </div>
 
-            {/* Distances */}
-            <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
-              <p className="text-[11px] text-slate-400 tracking-widest uppercase mb-4">
-                {lang === "mn" ? "Зай & хугацаа" : "Distance & Travel Time"}
-              </p>
-              <div className="space-y-0">
-                {distances.map((d, i) => (
-                  <div key={i} className="flex items-center justify-between py-3 border-b border-slate-50 last:border-0">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-teal shrink-0" />
-                      <span className="text-[13px] text-slate-600">{d.from[lang]}</span>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-[14px] font-semibold text-slate-800">{d.km}</div>
-                      <div className="flex items-center gap-1 text-[11px] text-slate-400 justify-end">
-                        <Clock size={10} />{d.time[lang]}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5">
+              <h3 className="font-semibold text-slate-900">{lang === "mn" ? "Аяллаа төлөвлөх" : "Plan your journey"}</h3>
+              <p className="text-sm leading-6 text-slate-600">{lang === "mn" ? "Чиглэл авах холбоосоор өөрийн явах цэгийг сонгоно уу. Очих цэг, замын нөхцөл, тээврийн хуваарийг хүлээн авалтаас тодруулна уу." : "Use Get directions to choose your starting point. Confirm the arrival point, road conditions and transport arrangements with reception."}</p>
             </div>
 
             {/* Bus info */}
@@ -109,26 +89,21 @@ export function LocationSection() {
           {/* Right: Google Map */}
           <div className="lg:col-span-3 flex flex-col gap-4">
             <div className="w-full rounded-2xl overflow-hidden border border-slate-200 shadow-sm" style={{height:"460px"}}>
-              <iframe
-                src={mapSrc}
-                width="100%"
-                height="100%"
-                style={{border:0}}
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title={lang === "mn" ? "Сэмжид Хужирт байршил" : "Semjid Khujirt Location"}
-              />
+              <div className="flex h-full flex-col items-center justify-center gap-5 bg-teal/5 p-8 text-center">
+                <MapPin aria-hidden="true" size={42} className="text-teal" />
+                <h3 className="text-2xl font-semibold text-slate-900">{t.location.addr[lang]}</h3>
+                <p className="max-w-sm text-sm leading-6 text-slate-700">{lang === "mn" ? "Газрын зургийг доорх холбоосоор Google Maps-д нээнэ. Нээх үед Google-ийн үйлчилгээний нөхцөл үйлчилнэ." : "Use the directions link to open Google Maps. Google's service terms apply when you open it."}</p>
+              </div>
             </div>
 
             {/* Coordinates + directions */}
             <div className="flex items-center justify-between bg-white rounded-xl border border-slate-100 px-5 py-3 shadow-sm">
               <div className="flex items-center gap-2 text-[12px] text-slate-500">
                 <MapPin size={13} className="text-teal" />
-                <span className="font-mono text-slate-600">{lat}°N, {lng}°E</span>
+                <span className="text-slate-600">{lang === "mn" ? "Хужирт, Өвөрхангай" : "Khujirt, Uvurkhangai"}</span>
               </div>
               <a
-                href={`https://maps.google.com/?q=${lat},${lng}`}
+                href={MAP_DIRECTIONS_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[12px] text-teal hover:text-teal-dark no-underline font-medium transition-colors flex items-center gap-1"

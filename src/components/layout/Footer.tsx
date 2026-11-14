@@ -1,12 +1,17 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
-import { MapPin, Phone } from "lucide-react";
+import { Facebook, MapPin, Phone } from "lucide-react";
+import { useCookiePreferences } from "@/components/privacy/CookieConsent";
+import { usePathname } from "next/navigation";
 import { useLang } from "@/lib/lang-context";
-import { t, PHONE1, PHONE2, PHONE_BUS1, PHONE_BUS2 } from "@/lib/data";
+import { t, PHONE1, PHONE2, PHONE_BUS1, PHONE_BUS2, FACEBOOK_URL } from "@/lib/data";
 
 export function Footer() {
   const { lang } = useLang();
+  const { openPreferences } = useCookiePreferences();
+  const path = usePathname();
+  if (path.startsWith("/admin")) return <footer className="border-t border-slate-200 bg-white px-6 py-4 text-sm text-slate-600"><span>© {new Date().getFullYear()} Сэмжид Хужирт</span><button onClick={openPreferences} className="ml-5 min-h-11 text-teal underline">{lang === "mn" ? "Күүкийн тохиргоо" : "Cookie preferences"}</button></footer>;
   return (
     <footer className="bg-slate-900 text-slate-400 pt-12 pb-6 px-6 lg:px-10">
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-10 mb-10">
@@ -25,13 +30,14 @@ export function Footer() {
         <div>
           <h4 className="text-[10px] tracking-widest uppercase text-slate-500 mb-4">{t.footer.nav[lang]}</h4>
           <ul className="space-y-2.5 list-none">
-            {[["/",t.nav.home],["/about",t.nav.about],["/rooms",t.nav.rooms],["/booking",t.nav.booking],["/faq", {mn:"Тусламж", en:"FAQ"}],["/privacy",t.footer.privacy],["/terms",t.footer.terms],["/refund-policy",t.footer.refund]].map(([href,label]) => (
+            {[["/",t.nav.home],["/about",t.nav.about],["/services",t.nav.services],["/contact",{mn:"Холбоо барих",en:"Contact"}],["/rooms",t.nav.rooms],["/booking",t.nav.booking],["/faq", {mn:"Тусламж", en:"FAQ"}],["/cookies",{mn:"Күүкийн бодлого",en:"Cookie policy"}],["/privacy",t.footer.privacy],["/terms",t.footer.terms],["/refund-policy",t.footer.refund]].map(([href,label]) => (
               <li key={href as string}>
                 <Link href={href as string} className="text-[13px] text-slate-500 hover:text-white no-underline transition-colors">
                   {(label as {mn:string;en:string})[lang]}
                 </Link>
               </li>
             ))}
+            <li><button type="button" onClick={openPreferences} className="min-h-11 text-sm text-slate-300 underline hover:text-white">{lang === "mn" ? "Күүкийн тохиргоо" : "Cookie preferences"}</button></li>
           </ul>
         </div>
         <div>
@@ -45,6 +51,13 @@ export function Footer() {
               </div>
             </li>
             <li className="text-[11px] text-slate-500">{lang==="mn"?"Билет: ":"Bus: "}{PHONE_BUS1}, {PHONE_BUS2}</li>
+            <li>
+              <a href={FACEBOOK_URL} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 text-sm text-slate-300 underline hover:text-white">
+                <Facebook aria-hidden="true" size={16} />
+                {lang === "mn" ? "Facebook хуудас" : "Visit Facebook"}
+                <span className="sr-only">{lang === "mn" ? " · Шинэ табд нээгдэнэ" : " · Opens in a new tab"}</span>
+              </a>
+            </li>
           </ul>
         </div>
       </div>

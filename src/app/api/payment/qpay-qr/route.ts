@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 function notConnected() {
   return NextResponse.json(
-    { error: "Online payment is not connected. QPay is coming soon." },
+    { error: "Online payment is not connected." },
     { status: 410 }
   );
 }

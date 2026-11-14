@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       if (error.code === "22023" || error.code?.startsWith("22")) {
         return NextResponse.json({ error: "The selected report dates are invalid." }, { status: 400 });
       }
-      console.error("CEO dashboard aggregate query failed", error);
+      console.error("CEO dashboard aggregate query failed");
       return NextResponse.json({ error: "Business report is temporarily unavailable." }, { status: 503 });
     }
     if (!data || typeof data !== "object" || !("current" in data) || !("income_trend" in data)) {
@@ -78,8 +78,8 @@ export async function GET(request: NextRequest) {
         },
       },
     }, { headers: { "Cache-Control": "no-store" } });
-  } catch (error) {
-    console.error("CEO dashboard request failed", error);
+  } catch {
+    console.error("CEO dashboard request failed");
     return NextResponse.json({ error: "Business report is temporarily unavailable." }, { status: 503 });
   }
 }
