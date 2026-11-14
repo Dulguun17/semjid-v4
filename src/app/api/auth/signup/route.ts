@@ -1,9 +1,17 @@
 import { createClient } from "@supabase/supabase-js";
+import { readJsonObject, RequestInputError } from "@/lib/request-validation";
 import { NextResponse } from "next/server";
+import { emailConfirmationRequired } from "@/lib/email-otp-config";
+import { normalizeEmail } from "@/lib/customer-auth";
+
+const otpSetupError = () => NextResponse.json({
+  error: "Email verification is temporarily unavailable. Try again later.",
+  code: "otp_setup_required",
+}, { status: 503, headers: { "Cache-Control": "no-store" } });
 
 export async function POST(request: Request) {
   try {
-    const body: unknown = await request.json();
+    const body: unknown = await readJsonObject(request);
     if (!body || typeof body !== "object") {
       return NextResponse.json({ error: "Invalid signup request." }, { status: 400 });
     }
@@ -16,10 +24,10 @@ export async function POST(request: Request) {
       phone?: unknown;
     };
 
-    if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (typeof email !== "string" || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: "A valid email address is required." }, { status: 400 });
     }
-    if (typeof password !== "string" || password.length < 8) {
+    if (typeof password !== "string" || password.length < 8 || password.length > 128) {
       return NextResponse.json(
         { error: "Password must be at least 8 characters." },
         { status: 400 }
@@ -32,14 +40,19 @@ export async function POST(request: Request) {
       );
     }
 
+    if ([firstName, lastName].some(value => value !== undefined && (typeof value !== "string" || value.length > 100))
+      || (phone !== undefined && (typeof phone !== "string" || phone.length > 30))) throw new RequestInputError("Invalid contact details.");
+    const emailOtpEnabled = process.env.CUSTOMER_EMAIL_OTP_ENABLED === "true";
+    if (emailOtpEnabled && !await emailConfirmationRequired()) return otpSetupError();
+
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { auth: { persistSession: false, autoRefreshToken: false } }
+      { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } }
     );
 
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: normalizeEmail(email),
       password,
       options: {
         data: {
@@ -51,16 +64,26 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      console.error("Signup failed", error.message);
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      console.error("Signup failed", { code: error.code });
+      return NextResponse.json({ error: "Unable to create account. Check your details or try signing in." }, { status: error.status === 429 ? 429 : 400 });
+    }
+
+    // A settings change during signup must never turn the code flow into auto-confirmation.
+    if (emailOtpEnabled && data.session) {
+      await supabase.auth.signOut({ scope: "local" });
+      return otpSetupError();
     }
 
     return NextResponse.json(
-      { message: "User created successfully", confirmationRequired: !data.session },
-      { status: 201 }
+      {
+        message: "Check your email to continue.",
+        confirmationRequired: !data.session,
+        verification: emailOtpEnabled ? "email_otp" : "email_link",
+      },
+      { status: 201, headers: { "Cache-Control": "no-store" } }
     );
   } catch (error) {
-    console.error("Signup request failed", error);
+    if (error instanceof RequestInputError) return NextResponse.json({ error: error.message }, { status: error.status });
     return NextResponse.json({ error: "Registration failed." }, { status: 500 });
   }
 }

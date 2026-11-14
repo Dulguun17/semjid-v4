@@ -1,12 +1,12 @@
 "use client";
+import { useLang } from '@/lib/lang-context';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
 import { Star, User } from 'lucide-react';
 import { ReviewForm } from './ReviewForm';
 
 type Review = {
   id: string;
-  name: string;
+  fname: string;
   rating: number;
   comment: string;
   created_at: string;
@@ -14,17 +14,17 @@ type Review = {
 };
 
 export function ReviewsSection({ roomId }: { roomId?: string }) {
+  const { lang } = useLang();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchReviews = async () => {
-      let query = supabase.from('reviews').select('*').order('created_at', { ascending: false });
-      if (roomId) {
-        query = query.eq('room_id', roomId);
-      }
-      const { data } = await query;
-      setReviews(data || []);
+      try {
+        const response = await fetch(`/api/reviews${roomId ? `?room_id=${encodeURIComponent(roomId)}` : ""}`);
+        if (!response.ok) throw new Error("Reviews unavailable");
+        setReviews(await response.json());
+      } catch { setReviews([]); }
       setLoading(false);
     };
 
@@ -35,11 +35,11 @@ export function ReviewsSection({ roomId }: { roomId?: string }) {
     ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
     : 0;
 
-  if (loading) return <div>Loading reviews...</div>;
+  if (loading) return <div role="status">{lang === "mn" ? "Сэтгэгдэл ачаалж байна…" : "Loading reviews…"}</div>;
 
   return (
     <div className="mt-12">
-      <h2 className="text-2xl font-bold mb-6">Guest Reviews</h2>
+      <h2 className="text-2xl font-bold mb-6">{lang === "mn" ? "Зочдын сэтгэгдэл" : "Guest reviews"}</h2>
 
       {reviews.length > 0 && (
         <div className="mb-6 flex items-center gap-2">
@@ -53,7 +53,7 @@ export function ReviewsSection({ roomId }: { roomId?: string }) {
             ))}
           </div>
           <span className="text-lg font-semibold">{averageRating.toFixed(1)}</span>
-          <span className="text-gray-600">({reviews.length} reviews)</span>
+          <span className="text-gray-600">({reviews.length} {lang === "mn" ? "сэтгэгдэл" : "reviews"})</span>
         </div>
       )}
 
@@ -65,7 +65,7 @@ export function ReviewsSection({ roomId }: { roomId?: string }) {
                 <User size={20} className="text-gray-500" />
               </div>
               <div>
-                <p className="font-semibold">{review.name}</p>
+                <p className="font-semibold">{review.fname}</p>
                 <div className="flex items-center gap-1">
                   {[1,2,3,4,5].map(i => (
                     <Star
@@ -86,7 +86,7 @@ export function ReviewsSection({ roomId }: { roomId?: string }) {
       </div>
 
       {reviews.length === 0 && (
-        <p className="text-gray-500">No reviews yet. Be the first to leave a review!</p>
+        <p className="text-gray-500">{lang === "mn" ? "Одоогоор нийтлэгдсэн сэтгэгдэл алга." : "There are no published reviews yet."}</p>
       )}
 
       <div className="mt-8">

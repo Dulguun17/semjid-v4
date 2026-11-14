@@ -31,9 +31,19 @@ environment variables, scoped to the staging branch:
 | `SUPABASE_SERVICE_ROLE_KEY` | Secret server-side key from that same isolated project; never use a `NEXT_PUBLIC_` name |
 | `NEXT_PUBLIC_SITE_URL` | Exact HTTPS origin assigned to staging, with no trailing slash |
 | `BED_AVAILABILITY_PREVIEW` | Explicitly `false`; public preview is not part of this deployment |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Approved GA4 stream ID `G-2JLBR5H6HB` |
+| `GA_ANALYTICS_APPROVED` | Explicitly `false` until controlled staging verification is approved |
 
-`NEXT_PUBLIC_GA_MEASUREMENT_ID` is optional; leave it unset unless staging
-analytics is explicitly approved. Do not configure production Supabase values,
+The approved stream ID is configured in the ignored local environment with
+analytics approval off. Add the two analytics variables above only in the
+separate staging project's Preview scope. This document does not change Vercel
+settings. A controlled verification session must be approved before changing the
+approval flag or rebuilding with it enabled. The sandbox uses a new temporary
+identifier when it restarts, so returning-visitor metrics are limited. Do not add
+a second gtag or GTM container to the page. If a GTM container was installed
+outside this repository, resolve that duplicate path before activation.
+
+Do not configure production Supabase values,
 `RESEND_API_KEY`, SMS credentials, QPay credentials, `ADMIN_EMAIL`, or any
 notification provider credentials. Notification sending is not wired to a
 production transport in this phase.

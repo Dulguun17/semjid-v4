@@ -1,0 +1,54 @@
+:root { color-scheme: light; --page: #fff; --surface: #fff; --ink: #1e293b; --muted-ink: #536278; --focus: #0d7377; }
+html.dark { color-scheme: dark; --page: #0b1220; --surface: #142035; --ink: #e5edf7; --muted-ink: #b9c6d8; --focus: #8ce1d9; }
+body { background: var(--page); color: var(--ink); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+/* Raise subdued text contrast in the existing light interface too. */
+html:not(.dark) :is(.text-slate-400, .text-slate-500, .text-gray-500) { color: #536278; }
+html :is(.bg-slate-900, .bg-slate-800) :is(.text-slate-400, .text-slate-500, .text-slate-600) { color: #bccada; }
+:is([class~="text-white/50"], [class~="text-white/55"], [class~="text-white/60"], [class~="text-white/65"], [class~="text-white/70"]) { color: rgb(255 255 255 / 0.92); }
+.bg-gold.text-white { color: #172033; }
+
+/* Remap the existing shared utility palette without inverting photographs. */
+html.dark :is(.bg-white, [class~="bg-white/90"], [class~="bg-white/95"]) { background-color: var(--surface); }
+html.dark :is(.bg-slate-50, [class~="bg-slate-50/50"], .bg-cream, .bg-muted, [class~="bg-[#f6f5f1]"]) { background-color: #0b1220; }
+html.dark :is(.bg-slate-100, .bg-slate-200, .bg-slate-300, .bg-gray-200) { background-color: #24334a; }
+html.dark :is([class~="bg-[#eaf1ee]"], [class~="bg-[#f0f7f5]"], [class~="bg-teal/5"], [class~="bg-teal/8"], [class~="bg-teal/10"]) { background-color: #143036; }
+html.dark :is(.text-slate-900, .text-slate-800, .text-slate-700, .text-slate-600, .text-gray-700, .text-gray-600) { color: var(--ink); }
+html.dark :is(.text-slate-500, .text-slate-400, .text-gray-500, .text-gray-300) { color: var(--muted-ink); }
+html.dark :is(.text-slate-300, .text-slate-200) { color: #d7e1ed; }
+html.dark :is(.text-teal, .text-teal-dark, .text-teal-900, .text-teal-800) { color: #8ce1d9; }
+html.dark :is(.border-slate-50, .border-slate-100, .border-slate-200, .border-slate-300, .border-slate-500) { border-color: #41536c; }
+html.dark :is([class~="border-teal/20"], [class~="border-teal/30"], [class~="border-teal/40"]) { border-color: #4b9195; }
+html.dark :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) { background-color: #111e32; color: var(--ink); border-color: #52647d; }
+html.dark :is(input, textarea)::placeholder { color: #a9b8cd; opacity: 1; }
+:is(input[type="checkbox"], input[type="radio"]) { accent-color: #0d7377; }
+html.dark :is(input[type="checkbox"], input[type="radio"]) { accent-color: #8ce1d9; }
+html.dark .mobile-booking-cta { background: var(--surface); border-color: #41536c; }
+html.dark dialog { background: var(--surface); color: var(--ink); border: 1px solid #52647d; }
+html.dark :is([class~="hover:bg-slate-50"], [class~="hover:bg-slate-100"], [class~="hover:bg-slate-200"]):hover { background-color: #2b405b; }
+html.dark [class~="hover:text-teal"]:hover { color: #b6f3e9; }
+html.dark [class~="hover:bg-teal"]:hover { background-color: #0a5559; color: white; }
+
+/* Status surfaces keep their meaning with readable foregrounds. */
+html.dark :is(.bg-red-50, .bg-red-100, .bg-red-200, .bg-orange-50) { background-color: #421e29; }
+html.dark :is(.text-red-400, .text-red-500, .text-red-600, .text-red-700, .text-red-800, .text-rose-700, .text-orange-900) { color: #ffc5c5; }
+html.dark :is(.border-red-100, .border-red-200, .border-orange-200) { border-color: #b16a73; }
+html.dark :is(.bg-amber-50, .bg-amber-100) { background-color: #3d2d17; }
+html.dark :is(.text-amber-500, .text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900, .text-amber-950) { color: #ffe0a3; }
+html.dark .border-amber-200 { border-color: #a08045; }
+html.dark :is(.bg-emerald-50, .bg-emerald-100, .bg-emerald-200, .bg-green-100) { background-color: #12382f; }
+html.dark :is(.text-emerald-600, .text-emerald-700, .text-emerald-800, .text-emerald-900, .text-green-600) { color: #a1ebc5; }
+html.dark .border-emerald-200 { border-color: #4e917b; }
+html.dark .bg-blue-50 { background-color: #172f4e; }
+html.dark :is(.text-blue-500, .text-blue-600) { color: #b2d9ff; }
+html.dark .border-blue-100 { border-color: #5b81aa; }
+html.dark :is(.bg-emerald-500, .bg-emerald-600, .bg-green-400) { background-color: #176344; }
+html.dark :is(.bg-red-400, .bg-red-500, .bg-red-600, .bg-rose-400) { background-color: #992e40; }
+html.dark :is(.bg-amber-400, .bg-amber-500, .bg-gold) { background-color: #765016; }
+html.dark .bg-gold.text-white { color: white; }
+html.dark :is(.bg-blue-500, .bg-blue-600) { background-color: #275eac; }
+html.dark :is(.divide-slate-100, .divide-slate-200) > :not([hidden]) ~ :not([hidden]) { border-color: #41536c; }
+
+html :is(.bg-slate-900, .bg-slate-800) { color: #bccada; }
+html :is(.bg-slate-900, .bg-slate-800):is(.text-slate-400, .text-slate-500, .text-slate-600) { color: #bccada; }
+html.dark img[alt="Logo"] { background-color: white; border-radius: 50%; padding: 3px; }

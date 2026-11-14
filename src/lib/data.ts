@@ -5,6 +5,8 @@ export const PHONE1 = "8802-1191";
 export const PHONE2 = "7202-1191";
 export const PHONE_BUS1 = "9011-5757";
 export const PHONE_BUS2 = "8802-2304";
+export const FACEBOOK_URL = "https://www.facebook.com/semjidkhujirt/";
+export const MESSENGER_URL = "https://m.me/semjidkhujirt";
 
 // ── Currency formatter ─────────────────────────────────────────
 export function formatMNT(n: number): string {
@@ -26,7 +28,7 @@ export const t = {
     tag2:  { mn: "рашаан",  en: "Springs"     },
     tag3:  { mn: "сэргэлт", en: "Renewal"     },
     desc:  { mn: "«Хужиртын хөх сувд» халуун рашаан, «Хужиртын хар сувд» эмчилгээний шавраар байгалийн аргаар эрүүлжин урт насалъя.", en: "Restore yourself through the world-renowned «Blue Pearl» hot springs and «Black Pearl» therapeutic mud of Khujirt." },
-    cta1:  { mn: "Захиалга өгөх",   en: "Book Your Stay"    },
+    cta1:  { mn: "Байрлах өдрөө төлөвлөх",   en: "Plan Your Stay"    },
     cta2:  { mn: "Эмчилгээ үзэх",   en: "View Treatments"   },
     phone: { mn: "Захиалгын утас",   en: "Booking hotline"   },
   },
@@ -70,7 +72,7 @@ export const t = {
     title:    { mn: "Хэрхэн хүрэх вэ?",   en: "How to Get Here"       },
     sub:      { mn: "Улаанбаатар хоттой хатуу хучилттай засмал замаар холбогдсон. Жилийн 4 улиралд нээлттэй.", en: "Connected to Ulaanbaatar by paved road. Open year-round." },
     busTitle: { mn: "Тээврийн мэдээлэл",  en: "Transport Info"        },
-    bus:      { mn: "Зорчигч тээврийн автобус УБ хотоос өдөр бүр 14:00 цагаас Драгон төвөөс явна. Хужирт сумаас өдөр бүр 10:00 цагаас УБ хот руу явна.", en: "Daily bus from Dragon Terminal (UB) at 14:00. Return from Khujirt at 10:00 daily." },
+    bus:      { mn: "Автобусны явах цэг, өдөр, цагийн хуваарийг билетийн утсаар урьдчилан тодруулна уу.", en: "Confirm the departure point, travel date and current bus timetable using the ticket phone numbers." },
     ticket:   { mn: "Билет захиалга:",    en: "Bus tickets:"           },
     addr:     { mn: "Өвөрхангай аймаг, Хужирт сум, Монгол улс", en: "Khujirt soum, Uvurkhangai aimag, Mongolia" },
   },
@@ -107,13 +109,11 @@ export const t = {
     bank:     { mn: "Банкны шилжүүлэг", en: "Bank Transfer"      },
     cash:     { mn: "Бэлэн мөнгө",      en: "Cash on Arrival"    },
     qNote:    { mn: "QPay холбогдоогүй", en: "QPay is not connected" },
-    bankCo:   { mn: "\"ТӨБАСЭ ХХК\" — Сэмжид Хужирт", en: "\"TOBAS LLC\" — Semjid Khujirt" },
-    bankAcc:  { mn: "Данс: 08 0005 00 5557333756 (Хаан Банк)", en: "Account: 08 0005 00 5557333756 (Khan Bank)" },
-    bankRef:  { mn: "Утга: Таны нэр + ирэх өдөр", en: "Ref: Your name + check-in date" },
+    bankAcc:  { mn: "Банкны шилжүүлгийн одоогийн зааврыг хүлээн авалтаас авна уу.", en: "Contact reception for current bank-transfer instructions." },
     submit:   { mn: "Захиалга илгээх",  en: "Submit Booking"     },
     next:     { mn: "Үргэлжлүүлэх →",  en: "Continue →"         },
     back:     { mn: "← Буцах",          en: "← Back"             },
-    success:  { mn: "Захиалга амжилттай хүлээн авлаа! Бид удахгүй холбоо барина.", en: "Booking received! We will contact you shortly." },
+    success:  { mn: "Хүсэлт хадгалагдлаа. Одоогийн төлөвийг Миний захиалгууд хэсгээс шалгана уу.", en: "Request saved. Check My Bookings for its current status." },
     specialCodeSent: { mn: "Таны утсанд тусгай код илгээгдлээ.", en: "Special code sent to your phone." },
     summary:  { mn: "Захиалгын дэлгэрэнгүй", en: "Booking Summary" },
     noRoom:   { mn: "Өрөө сонгогдоогүй",     en: "No room selected" },
@@ -137,7 +137,7 @@ export const t = {
       { mn: "Та өөрийн архаг хуучний өвчний талаар бичигдсэн гар карт, хийлгэсэн лабораторийн шинжилгээ /цус, шээс, биохими/ болон багажийн шинжилгээ /хэвлийн эхо, зүрхний цахилгаан бичлэг, рентген, CT, MRI/ тайлбарын хамт авч ирж ирнэ үү.", en: "Bring your medical records, lab results (blood, urine, biochemistry), and imaging studies (ultrasound, ECG, X-ray, CT, MRI) with reports." },
       { mn: "Иргэний үнэмлэх (Хүүхэд бол төрсний гэрчилгээ)", en: "National ID (for children: birth certificate)." },
       { mn: "Цагаан хэрэглэл, ванны алчуур, маск, гар халдваргүйжүүлэгч, цайны аяга, халбага усны шаахай авч ирэх.", en: "Bring: bed linen, bath towel, mask, hand sanitiser, tea cup, spoon, and slippers." },
-      { mn: "Төлбөрийг картаар болон дансаар байгууллагын дансанд шилжүүлэх боломжтой.", en: "Payment can be made by card or bank transfer to the organisation's account." },
+      { mn: "Хүлээн авалтад бэлэн төлөх эсвэл банкны шилжүүлгийн одоогийн зааврыг хүлээн авалтаас авна уу. Шилжүүлгийг ажилтан шалгаж баталгаажуулна.", en: "Pay cash at reception or contact reception for current bank-transfer instructions. Staff verify receipt of bank transfers." },
       { mn: "Та сувилалд ирэхдээ урьдчилан хүлээн авах 7202-1191, 8802-1191 дугаарт ажлын цагийн 09.00–18.00 цагийн хооронд захиалга өгөх ба төлбөрийн урьдчилгааг баталгаажуулахыг анхааарна уу.", en: "Call 7202-1191 or 8802-1191 (09:00–18:00) to pre-register and confirm your deposit before arrival." },
     ],
   },

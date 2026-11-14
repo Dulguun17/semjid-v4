@@ -48,3 +48,7 @@ export function customerBookingErrorMessage(status: number, lang: "mn" | "en"): 
   };
   return (messages[status] ?? messages[503])[lang];
 }
+
+export function bookingConfirmationStorageKey(userId: string) {
+  return `semjid:booking-confirmation:${userId}`;
+}

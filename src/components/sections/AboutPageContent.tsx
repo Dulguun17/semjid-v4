@@ -1,8 +1,8 @@
 "use client";
+import Link from "next/link";
 import Image from "next/image";
-import { MapPin } from "lucide-react";
 import { useLang } from "@/lib/lang-context";
-import { t, conditions, distances, PHONE_BUS1, PHONE_BUS2 } from "@/lib/data";
+import { t, conditions, PHONE_BUS1, PHONE_BUS2 } from "@/lib/data";
 
 export function AboutPageContent() {
   const { lang } = useLang();
@@ -13,7 +13,7 @@ export function AboutPageContent() {
     [t.about.s4n, t.about.s4l],
   ];
   return (
-    <div className="bg-white">
+    <main className="bg-white">
       <div className="relative h-64 md:h-80 overflow-hidden">
         <Image src="/images/resort-building.jpg" alt="Resort" fill className="object-cover"/>
         <div className="absolute inset-0 bg-teal-dark/75"/>
@@ -61,16 +61,9 @@ export function AboutPageContent() {
           <div>
             <p className="text-[11px] tracking-[0.2em] uppercase text-teal mb-2">{t.location.badge[lang]}</p>
             <h2 className="font-serif text-[clamp(24px,3vw,38px)] text-slate-800 mb-4">{t.location.title[lang]}</h2>
-            <div className="space-y-3 mb-6">
-              {distances.map((d,i) => (
-                <div key={i} className="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-100">
-                  <div className="flex items-center gap-3"><MapPin size={14} className="text-teal"/><span className="text-[14px] text-slate-600">{d.from[lang]}</span></div>
-                  <div className="text-right">
-                    <div className="text-[14px] font-semibold">{d.km}</div>
-                    <div className="text-[11px] text-slate-400">{d.time[lang]}</div>
-                  </div>
-                </div>
-              ))}
+            <div className="mb-6 space-y-3 rounded-xl border border-slate-200 bg-white p-5 text-slate-700">
+              <p>{t.location.addr[lang]}</p>
+              <Link href="/contact" className="inline-block min-h-11 py-3 font-semibold text-teal underline">{lang === "mn" ? "Газрын зураг, чиглэл ба хүлээн авалт" : "Map, directions and reception"}</Link>
             </div>
             <div className="bg-teal/8 border border-teal/15 rounded-xl p-5 text-[13px] text-slate-600">
               <p className="font-medium text-slate-700 mb-1">{t.location.busTitle[lang]}</p>
@@ -83,6 +76,6 @@ export function AboutPageContent() {
           </div>
         </div>
       </section>
-    </div>
+    </main>
   );
 }

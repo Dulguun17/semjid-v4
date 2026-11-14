@@ -14,12 +14,12 @@ export async function GET(request: NextRequest) {
     try {
       const { data, error } = await getSupabaseAdmin().rpc("get_public_booking_policy");
       if (error) {
-        console.error("Public booking policy query failed", error);
+        console.error("Public booking policy query failed");
         return NextResponse.json({ error: "Booking policy is temporarily unavailable." }, { status: 503 });
       }
       return NextResponse.json({ policy: data });
-    } catch (error) {
-      console.error("Public booking policy query is not configured", error);
+    } catch {
+      console.error("Public booking policy query is not configured");
       return NextResponse.json({ error: "Booking policy is not configured." }, { status: 503 });
     }
   }
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     });
     if (error) {
       const status = error.code?.startsWith("22") ? 400 : 503;
-      if (status === 503) console.error("Public bed availability query failed", error);
+      if (status === 503) console.error("Public bed availability query failed");
       return NextResponse.json({
         error: status === 400
           ? "Dates do not meet the current booking requirements."
@@ -51,8 +51,8 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ rooms: data });
-  } catch (error) {
-    console.error("Bed availability preview is not configured", error);
+  } catch {
+    console.error("Bed availability preview is not configured");
     return NextResponse.json({ error: "Bed availability preview is not configured." }, { status: 503 });
   }
 }

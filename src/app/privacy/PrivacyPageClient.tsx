@@ -1,61 +1,22 @@
 "use client";
-
 import Link from "next/link";
 import { useLang } from "@/lib/lang-context";
+import { PHONE1 } from "@/lib/data";
 
 export default function PrivacyPageClient() {
   const { lang } = useLang();
-
-  return (
-    <main className="max-w-5xl mx-auto px-6 py-20 min-h-[70vh]">
-      <div className="space-y-6">
-        <div className="space-y-3">
-          <p className="text-sm text-teal font-semibold uppercase tracking-[0.24em]">
-            {lang === "mn" ? "Нууцлалын бодлого" : "Privacy Policy"}
-          </p>
-          <h1 className="text-3xl font-serif text-slate-900">
-            {lang === "mn" ? "Өөрийн мэдээллээ хэрхэн хамгаалдаг вэ" : "How We Protect Your Information"}
-          </h1>
-          <p className="text-slate-500 text-sm max-w-2xl">
-            {lang === "mn"
-              ? "Тухайн вебсайт нь хэрэглэгчийн хувийн мэдээллийг зөвхөн захиалга, харилцаа холбоо, үйлчилгээ сайжруулах зорилгоор ашигладаг."
-              : "This website uses personal data only for booking, communication, and service improvement purposes."}
-          </p>
-        </div>
-
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold text-slate-800">{lang === "mn" ? "Мэдээлэл цуглуулах" : "Information We Collect"}</h2>
-          <p className="text-slate-500 leading-relaxed">
-            {lang === "mn"
-              ? "Захиалга хийх үед бид таны нэр, утас, имэйл зэрэг мэдээллийг авна. Энэ мэдээлэл нь таны захиалгыг боловсруулахад ашиглагдана."
-              : "When making a reservation, we collect your name, phone, and email. This information is used to process your booking."}
-          </p>
-        </section>
-
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold text-slate-800">{lang === "mn" ? "Мэдээлэл хамгаалах" : "How We Protect Data"}</h2>
-          <p className="text-slate-500 leading-relaxed">
-            {lang === "mn"
-              ? "Манай системд хадгалагдсан мэдээллийг зөвшөөрөлгүй хандалтаас хамгаалахын тулд хэрэгцээт нууцлал, нэвтрэх хязгаарлалтыг ашиглана."
-              : "We use necessary security and access restrictions to protect stored data from unauthorized access."}
-          </p>
-        </section>
-
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold text-slate-800">{lang === "mn" ? "Холбоо барих" : "Contact"}</h2>
-          <p className="text-slate-500 leading-relaxed">
-            {lang === "mn"
-              ? "Нууцлалын бодлогод асуулт байвал бидэнд утсаар эсвэл цахим шуудангаар хандаж болно."
-              : "If you have questions about privacy, contact us by phone or email."}
-          </p>
-        </section>
-
-        <div className="pt-8 border-t border-slate-200">
-          <Link href="/" className="text-teal hover:text-teal-dark text-sm font-medium">
-            {lang === "mn" ? "Нүүр хуудас руу буцах" : "Back to home"}
-          </Link>
-        </div>
-      </div>
-    </main>
-  );
+  const sections = [
+    { title: { mn: "Захиалга ба бүртгэл", en: "Bookings and accounts" }, text: { mn: "Бүртгэл, захиалгад оруулсан нэр, утас, имэйл, байрлах огноо, өрөө, ор, захиалгын төлөв болон төлбөрийн бүртгэлийг үйлчилгээ үзүүлэхэд ашиглана. Нэвтрэлт, мэдээллийн хадгалалтад Supabase ашиглана. Ажилтны болон хэрэглэгчийн хандалтыг үүрэг, захиалгын эзэмшлээр хязгаарлах логиктой.", en: "Names, phone numbers, email addresses, stay dates, room and bed choices, booking status and payment records are used to provide the service. Supabase supports sign-in and data storage. Access logic distinguishes staff roles and customer booking ownership." } },
+    { title: { mn: "Чат ба сэтгэгдэл", en: "Chat and feedback" }, text: { mn: "Чатаар илгээсэн нэр, мессеж, сессийн дугаар болон огноог харилцаагаа үргэлжлүүлэхэд ашиглана. Чатын сессийн түлхүүрийг бусадтай бүү хуваалцаарай. Нийтэд зориулсан сэтгэгдэл нь хянуулсны дараа нэр, үнэлгээ, тайлбартай нийтлэгдэж болно. Дууссан захиалгад өгсөн хэрэглэгчийн үнэлгээ нь нийтийн сэтгэгдлээс тусдаа хадгалагдана.", en: "Chat names, messages, session identifiers and dates support your conversation. Keep your chat session key private. A public review may display its submitted name, rating and comment after moderation. Feedback on a completed booking is stored separately from public reviews." } },
+    { title: { mn: "Эмнэлгийн бичиг", en: "Medical documents" }, text: { mn: "Илгээх бичгийн хоосон маягтыг татаж, бөглүүлэн биетээр авч ирнэ. Захиалгын энэ урсгал бөглөсөн эмнэлгийн бичиг байршуулахыг шаардахгүй. Чат, нийтийн сэтгэгдэлд эмнэлгийн мэдээлэл болон нууц баримт бүү оруулаарай.", en: "Download the blank referral form, complete it and bring it in person. This booking flow does not request uploads of completed medical records. Keep medical details and confidential documents out of chat and public reviews." } },
+    { title: { mn: "Аналитик ба гаднын үйлчилгээ", en: "Analytics and external services" }, text: { mn: "Тохируулж идэвхжүүлсэн Google Analytics нь зөвхөн зөвшөөрсний дараа нийтийн танилцуулгын хуудсуудын хандалтыг хэмжинэ. Захиалга, профайл, нэвтрэлт болон ажилтны хуудсууд хэмжилтээс хасагдана. Нэр, утас, эмнэлгийн мэдээлэл, хэрэглэгчийн болон захиалгын дугаар, URL-ийн асуулга, hash дамжуулахгүй. Google нь сүлжээний IP, хөтөч, төхөөрөмжийн мэдээлэл боловсруулах боломжтой. Google Maps, Facebook, Messenger нь холбоосыг нээхэд өөрийн бодлогоор ажиллана.", en: "When configured and enabled, Google Analytics measures public marketing pages only after consent. Booking, profile, sign-in and staff pages are excluded. Names, phone numbers, medical details, account or booking IDs, URL query strings and hashes are excluded. Google may process network IP, browser and device information. Google Maps, Facebook and Messenger apply their own policies when you follow their links." } },
+    { title: { mn: "Хөтчийн хадгалалт ба сонголт", en: "Browser storage and choices" }, text: { mn: "Нэвтрэлт, захиалга, хүссэн чат болон күүкийн сонголтод хөтчийн хадгалалт ашиглана. Нэмэлт аналитикаас татгалзсан ч үндсэн үйлчилгээг ашиглаж болно. Күүкийн тохиргоог хуудасны доороос дахин нээж болно. Хадгалалт цэвэрлэхэд нэвтрэлт, түр мэдээлэл эсвэл чатад хандах боломж өөрчлөгдөж болно.", en: "Browser storage supports sign-in, booking, requested chat and cookie choices. Rejecting optional analytics keeps essential services available. Reopen Cookie preferences in the footer at any time. Clearing storage can affect sign-in, drafts or access to your chat." } },
+    { title: { mn: "Холбоо барих ба мэдээллийн хүсэлт", en: "Contact and data requests" }, text: { mn: "Мэдээлэлд хандах, засах, устгах хүсэлт болон хадгалах хугацааны талаар хүлээн авалттай холбогдоно уу. Хүсэлтийн боломж, хадгалалт, устгах журмыг компанитай тодруулна.", en: "Contact reception about access, correction or deletion requests and data retention. Confirm the applicable handling and retention arrangements with the company." } },
+  ];
+  return <main className="mx-auto max-w-4xl space-y-7 px-5 py-12 text-slate-700">
+    <h1 className="text-3xl text-slate-900">{lang === "mn" ? "Нууцлалын мэдээлэл" : "Privacy information"}</h1>
+    {sections.map(section => <section key={section.title.en}><h2 className="mb-3 text-xl font-semibold text-slate-900">{section.title[lang]}</h2><p className="text-base leading-7">{section.text[lang]}</p></section>)}
+    <a href={`tel:${PHONE1.replaceAll("-", "")}`} className="inline-block min-h-11 py-2 font-semibold text-teal underline">{lang === "mn" ? "Хүлээн авалт" : "Reception"} · {PHONE1}</a>
+    <Link href="/cookies" className="ml-5 inline-block min-h-11 py-2 text-teal underline">{lang === "mn" ? "Күүкийн бодлого" : "Cookie policy"}</Link>
+  </main>;
 }

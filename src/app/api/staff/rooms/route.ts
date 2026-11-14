@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   const supabase = createWorkspaceUserClient(req);
   const { error: expiryError } = await supabase.rpc("expire_pending_bookings_for_staff");
   if (expiryError) {
-    console.error("Failed to expire held bookings before availability load", expiryError);
+    console.error("Failed to expire held bookings before availability load");
     return NextResponse.json({ error: "Room availability is unavailable." }, { status: 503 });
   }
   const [
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     supabase.from("room_beds").select("id, room_id, bed_number, active").eq("active", true).order("room_id").order("bed_number"),
   ]);
   if (unitError || categoryError || blockError || policyError || bedError) {
-    console.error("Failed to load staff room inventory or booking policy", unitError || categoryError || blockError || policyError || bedError);
+    console.error("Failed to load staff room inventory or booking policy");
     return NextResponse.json({ error: "Room inventory is unavailable." }, { status: 503 });
   }
 

@@ -53,8 +53,8 @@ export function RoomsPageContent() {
   }, [rooms, searchTerm, priceFilter, capacityFilter, lang]);
 
   return (
-    <div className="bg-slate-50">
-      <div className="relative h-64 overflow-hidden">
+    <main className="bg-slate-50">
+      <div data-photo-surface className="relative h-64 overflow-hidden">
         <Image src="/images/image3.jpeg" alt="Өрөөнүүд" fill className="object-cover"/>
         <div className="absolute inset-0 bg-teal-dark/75"/>
         <div className="absolute inset-0 flex items-center px-6 lg:px-10">
@@ -91,7 +91,7 @@ export function RoomsPageContent() {
                   <tr key={r.id} className={i%2===0?"bg-white":"bg-slate-50/50"}>
                     <td className="p-3 font-medium text-slate-700">{r.name[lang]}</td>
                     {[r.adult1,r.adult2,r.child02,r.child37a,r.child37b,r.child812a,r.child812b].map((v,j) => (
-                      <td key={j} className="p-3 text-center text-slate-600">{v ? formatMNT(v) : <span className="text-slate-200">—</span>}</td>
+                      <td key={j} className="p-3 text-center text-slate-600">{v ? formatMNT(v) : <span className="text-slate-500">—</span>}</td>
                     ))}
                   </tr>
                 ))}
@@ -178,6 +178,6 @@ export function RoomsPageContent() {
           <ReviewsSection />
         </div>
       </section>
-    </div>
+    </main>
   );
 }

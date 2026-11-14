@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { supabase } from "@/lib/supabase";
 import {
   BarChart3,
@@ -231,6 +232,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <button onClick={() => setSidebarOpen(true)} className="cursor-pointer text-slate-500 lg:hidden" aria-label="Open navigation">
             <Menu size={22} />
           </button>
+          <ThemeToggle />
           <div className="ml-auto text-xs font-medium uppercase tracking-wide text-slate-500">
             {role === "ceo" ? "Зөвхөн унших" : isManager ? "Ажилтан · Менежер" : "Ажилтан"}
           </div>

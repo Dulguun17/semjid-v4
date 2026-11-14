@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
       : error.code?.startsWith("22") ? 400
       : error.code === "P0002" ? 404
       : 503;
-    if (status === 503) console.error("Room availability check failed", error);
+    if (status === 503) console.error("Room availability check failed");
     return NextResponse.json(
       { error: status === 503 ? "Availability is unknown because the check failed." : error.message, available: null },
       { status }

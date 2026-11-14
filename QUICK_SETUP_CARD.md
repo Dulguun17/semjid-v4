@@ -91,8 +91,7 @@
 | Item | Value |
 |------|-------|
 | **Admin Email** | otgonbatzolboo@gmail.com |
-| **Bank Account** | Managed securely outside this repository |
-| **Bank** | Khan Bank (Хаан Банк) |
+| **Bank transfer instructions** | Contact reception for current instructions |
 | **Supabase Project** | qgutrcekzdaicxhjtrcx |
 | **Vercel Hosting** | FREE |
 | **Domain Cost** | $12-15/year |

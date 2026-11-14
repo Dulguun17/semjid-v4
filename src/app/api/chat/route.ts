@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { readJsonObject, RequestInputError } from "@/lib/request-validation";
 import { requireWorkspaceAccess } from "@/lib/workspace-auth";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body = await readJsonObject(req);
     const { message, sessionId, senderName } = body;
 
-    if (!message || !sessionId) {
-      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
-    }
-
-    if (typeof message !== "string" || typeof sessionId !== "string" || !message.trim() || !sessionId.trim()) {
-      return NextResponse.json({ error: "Message and session ID are required." }, { status: 400 });
+    if (typeof message !== "string" || !message.trim() || message.length > 2000
+      || typeof sessionId !== "string" || !/^chat_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId)
+      || (req.headers.has("x-chat-session") && req.headers.get("x-chat-session") !== sessionId)
+      || (senderName !== undefined && (typeof senderName !== "string" || senderName.length > 100))) {
+      throw new RequestInputError("Invalid chat session, name or message (maximum 2000 characters).");
     }
 
     const { data, error } = await getSupabaseAdmin()
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, id: data.id });
   } catch (err) {
-    console.error("Chat error:", err);
+    if (err instanceof RequestInputError) return NextResponse.json({ error: err.message }, { status: err.status });
     return NextResponse.json({ error: "Failed to send message" }, { status: 500 });
   }
 }
@@ -58,8 +58,8 @@ export async function GET(req: NextRequest) {
     .order("created_at", { ascending: true });
 
   if (error) {
-    console.error("Failed to load staff chat messages", error);
+    console.error("Chat read failed", { code: error.code });
     return NextResponse.json({ error: "Failed to load messages." }, { status: 500 });
   }
-  return NextResponse.json({ messages: data || [] });
+  return NextResponse.json({ messages: data || [] }, { headers: { "Cache-Control": "private, no-store" } });
 }

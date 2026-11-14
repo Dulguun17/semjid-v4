@@ -8,7 +8,7 @@ function databaseErrorResponse(error: { code?: string; message: string }) {
     : error.code === "23505" ? 409
     : error.code === "22023" || error.code?.startsWith("22") ? 400
     : 500;
-  if (status === 500) console.error("Staff payment operation failed", error);
+  if (status === 500) console.error("Staff payment operation failed");
   return NextResponse.json(
     { error: status === 500 ? "Payment operation failed." : error.message },
     { status }

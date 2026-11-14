@@ -21,7 +21,7 @@ export function HeroSection() {
   const phoneLabel = getContent('hero', 'phone', lang) || t.hero.phone[lang];
 
   return (
-    <section className="relative min-h-screen flex items-end overflow-hidden">
+    <section data-photo-surface className="relative min-h-[calc(100svh-4rem)] flex items-center overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0">
         <Image
@@ -33,7 +33,7 @@ export function HeroSection() {
           priority
           loading="eager"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/95 via-slate-900/50 to-slate-800/20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/95 via-slate-900/70 to-slate-800/70" />
       </div>
 
       {/* Logo top-right */}
@@ -44,7 +44,7 @@ export function HeroSection() {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-10 pb-20 lg:pb-28">
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-10 py-8 lg:py-20">
         <div className="max-w-3xl">
           {/* Badge */}
           <div className="mb-5 fade-up">
@@ -57,9 +57,31 @@ export function HeroSection() {
           {/* Headline */}
           <h1 className="font-serif leading-[1.05] mb-6 fade-up2">
             <span className="block text-[clamp(48px,7vw,96px)] text-white">{tag1},</span>
-            <span className="block text-[clamp(48px,7vw,96px)] text-teal-light italic">{tag2},</span>
-            <span className="block text-[clamp(48px,7vw,96px)] text-gold">{tag3}</span>
+            <span className="block text-[clamp(48px,7vw,96px)] text-[#8ce1d9] italic">{tag2},</span>
+            <span className="block text-[clamp(48px,7vw,96px)] text-[#ffe0a3]">{tag3}</span>
           </h1>
+
+          {/* CTAs */}
+          <div className="flex flex-wrap gap-3 items-center mb-6 fade-up3">
+            <Link
+              data-primary-cta href="/booking"
+              className="inline-flex items-center gap-2 text-[13px] font-medium bg-teal hover:bg-teal-dark text-white px-8 py-3.5 rounded-lg no-underline transition-colors shadow-lg shadow-teal/30"
+            >
+              {cta1} <ArrowRight size={14} />
+            </Link>
+            <Link
+              href="/services"
+              className="inline-flex items-center gap-2 text-[13px] bg-white/10 hover:bg-white/20 border border-white/20 text-white px-8 py-3.5 rounded-lg no-underline transition-colors"
+            >
+              {cta2}
+            </Link>
+            <a
+              href={`tel:${PHONE1.replace(/-/g, "")}`}
+              className="inline-flex items-center gap-1.5 text-[13px] text-white/60 hover:text-white no-underline transition-colors"
+            >
+              <Phone size={13} className="text-teal-light" /> {phoneLabel}: {PHONE1}
+            </a>
+          </div>
 
           <p className="text-[15px] text-white/65 leading-relaxed max-w-lg mb-8 fade-up3">
             {desc}
@@ -85,27 +107,7 @@ export function HeroSection() {
             </div>
           </div>
 
-          {/* CTAs */}
-          <div className="flex flex-wrap gap-3 items-center fade-up3">
-            <Link
-              href="/booking"
-              className="inline-flex items-center gap-2 text-[13px] font-medium bg-teal hover:bg-teal-dark text-white px-8 py-3.5 rounded-lg no-underline transition-colors shadow-lg shadow-teal/30"
-            >
-              {cta1} <ArrowRight size={14} />
-            </Link>
-            <Link
-              href="/booking"
-              className="inline-flex items-center gap-2 text-[13px] bg-white/10 hover:bg-white/20 border border-white/20 text-white px-8 py-3.5 rounded-lg no-underline transition-colors"
-            >
-              {cta2}
-            </Link>
-            <a
-              href={`tel:${PHONE1.replace(/-/g, "")}`}
-              className="inline-flex items-center gap-1.5 text-[13px] text-white/60 hover:text-white no-underline transition-colors"
-            >
-              <Phone size={13} className="text-teal-light" /> {phoneLabel}: {PHONE1}
-            </a>
-          </div>
+
         </div>
       </div>
 

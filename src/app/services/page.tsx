@@ -7,7 +7,7 @@ export default function ServicesPage() {
   const { lang } = useLang();
 
   return (
-    <div className="bg-slate-50 min-h-screen">
+    <main className="bg-slate-50 min-h-screen">
       {/* Hero Section */}
       <div className="bg-teal py-14 px-6 lg:px-10">
         <div className="max-w-7xl mx-auto">
@@ -31,8 +31,8 @@ export default function ServicesPage() {
           </h2>
           <p className="text-[15px] text-slate-600 leading-relaxed">
             {lang === "mn"
-              ? "Өрөө захиалахад бүх эмчилгээний төрлүүд багтсан байдаг. Зочдын биеийн байдал, өвчний түүхийг үндэслэн манай мэргэжилтэн эмч нар шинжилгээ хийж, тохирсон эмчилгээг сонгон хийдэг."
-              : "All treatments are included when booking a room. Based on the guest's physical condition and medical history, our specialist doctors conduct examinations and provide suitable treatments."
+              ? "Эмчтэй зөвлөлдөж тохирох эмчилгээг сонгоно. Үйлчилгээний багц, хоол, эмчилгээний үнэ болон багтах зүйлсийг хүлээн авалтаас баталгаажуулна уу."
+              : "Treatments depend on a clinical consultation. Confirm package inclusions, meals and treatment prices with reception."
             }
           </p>
         </div>
@@ -74,6 +74,6 @@ export default function ServicesPage() {
           ))}
         </div>
       </div>
-    </div>
+    </main>
   );
 }

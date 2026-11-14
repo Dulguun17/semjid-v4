@@ -26,8 +26,8 @@ export async function POST(req: NextRequest) {
 
     if (error) throw error;
     return NextResponse.json({ success: true, id: data.id });
-  } catch (err) {
-    console.error("Failed to send staff chat reply", err);
+  } catch {
+    console.error("Failed to send staff chat reply");
     return NextResponse.json({ error: "Failed to send message." }, { status: 500 });
   }
 }
